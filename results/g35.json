@@ -1,0 +1,1010 @@
+{
+ "summary": {
+  "n_tasks": 35,
+  "n_ok": 31,
+  "n_skip": 4,
+  "n_error": 0,
+  "balanced": {
+   "n": 31,
+   "mean": 0.6557581504903397,
+   "median": 0.6272231894514504,
+   "min": 0.26059034330205894,
+   "max": 0.9856115107913669
+  },
+  "acc": {
+   "n": 31,
+   "mean": 0.6304838945978849,
+   "median": 0.6786427145708582,
+   "min": 0.19456066945606695,
+   "max": 0.9233226837060703
+  },
+  "acc_avail": {
+   "n": 31,
+   "mean": 0.6926826785572651,
+   "median": 0.7387543252595156,
+   "min": 0.24603174603174602,
+   "max": 0.979381443298969
+  },
+  "cover": {
+   "n": 31,
+   "mean": 0.918387100375724,
+   "median": 0.9716494845360825,
+   "min": 0.5268817204301075,
+   "max": 1.0
+  },
+  "n_frames": {
+   "n": 31,
+   "mean": 2250.0,
+   "median": 2047.0,
+   "min": 758.0,
+   "max": 5483.0
+  },
+  "n_models": {
+   "n": 31,
+   "mean": 3.806451612903226,
+   "median": 4.0,
+   "min": 2.0,
+   "max": 5.0
+  },
+  "n_ep": {
+   "n": 31,
+   "mean": 20.0,
+   "median": 20.0,
+   "min": 20.0,
+   "max": 20.0
+  },
+  "n_models_lt2": 0,
+  "n_models_lt4": 12,
+  "balanced_quantiles": {
+   "q10": 0.3544751191070499,
+   "q25": 0.5224707792686654,
+   "q50": 0.6272231894514504,
+   "q75": 0.8384619228547342,
+   "q90": 0.9468482905982906
+  }
+ },
+ "rows": [
+  {
+   "task": "Pick up the two T-shaped blocks, swap their positions, and place them back with the correct orientations.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1114,
+   "n_val_frames": 279,
+   "sizes": {
+    "0": 111,
+    "1": 57,
+    "2": 377,
+    "3": 127,
+    "4": 163
+   },
+   "skipped": [
+    0,
+    1,
+    3
+   ],
+   "n_models": 2,
+   "acc": 0.6810035842293907,
+   "balanced": 0.9856115107913669,
+   "acc_avail": 0.979381443298969,
+   "cover": 0.6953405017921147,
+   "recall": {
+    "2": 0.9712230215827338,
+    "4": 1.0
+   },
+   "worker": 5
+  },
+  {
+   "task": "Insert the three tubes into the rack one by one.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1296,
+   "n_val_frames": 325,
+   "sizes": {
+    "0": 137,
+    "1": 12,
+    "2": 135,
+    "3": 435,
+    "4": 252
+   },
+   "skipped": [
+    0,
+    1,
+    2
+   ],
+   "n_models": 2,
+   "acc": 0.7230769230769231,
+   "balanced": 0.9553615260537205,
+   "acc_avail": 0.9631147540983607,
+   "cover": 0.7507692307692307,
+   "recall": {
+    "3": 0.9931972789115646,
+    "4": 0.9175257731958762
+   },
+   "worker": 4
+  },
+  {
+   "task": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 758,
+   "n_val_frames": 181,
+   "sizes": {
+    "0": 25,
+    "1": 9,
+    "2": 13,
+    "3": 164,
+    "4": 366
+   },
+   "skipped": [
+    0,
+    1,
+    2
+   ],
+   "n_models": 2,
+   "acc": 0.8950276243093923,
+   "balanced": 0.9526051475204018,
+   "acc_avail": 0.9418604651162791,
+   "cover": 0.9502762430939227,
+   "recall": {
+    "3": 0.9814814814814815,
+    "4": 0.923728813559322
+   },
+   "worker": 2
+  },
+  {
+   "task": "Pick up the mallet and strike all xylophone keys from left to right.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1248,
+   "n_val_frames": 313,
+   "sizes": {
+    "0": 94,
+    "1": 358,
+    "2": 215,
+    "3": 231,
+    "4": 37
+   },
+   "skipped": [
+    0,
+    4
+   ],
+   "n_models": 3,
+   "acc": 0.9233226837060703,
+   "balanced": 0.9468482905982906,
+   "acc_avail": 0.9444444444444444,
+   "cover": 0.9776357827476039,
+   "recall": {
+    "1": 0.9384615384615385,
+    "2": 0.975,
+    "3": 0.9270833333333334
+   },
+   "worker": 4
+  },
+  {
+   "task": "Hang the headphones on the headphone stand, close the laptop, then place it into the vertical laptop stand.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2035,
+   "n_val_frames": 482,
+   "sizes": {
+    "0": 235,
+    "1": 694,
+    "2": 79,
+    "3": 21,
+    "4": 524
+   },
+   "skipped": [
+    2,
+    3
+   ],
+   "n_models": 3,
+   "acc": 0.8340248962655602,
+   "balanced": 0.9348129314758903,
+   "acc_avail": 0.9157175398633257,
+   "cover": 0.9107883817427386,
+   "recall": {
+    "0": 1.0,
+    "1": 0.9308755760368663,
+    "4": 0.8735632183908046
+   },
+   "worker": 1
+  },
+  {
+   "task": "Place the four eggs from the basket into the egg holder, then close the lid.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1653,
+   "n_val_frames": 445,
+   "sizes": {
+    "0": 157,
+    "1": 18,
+    "2": 349,
+    "3": 245,
+    "4": 439
+   },
+   "skipped": [
+    1
+   ],
+   "n_models": 4,
+   "acc": 0.8674157303370786,
+   "balanced": 0.8988877579874165,
+   "acc_avail": 0.8674157303370786,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.9622641509433962,
+    "2": 0.7674418604651163,
+    "3": 0.9487179487179487,
+    "4": 0.9171270718232044
+   },
+   "worker": 3
+  },
+  {
+   "task": "Swap the two blocks using the empty mat, pressing the button after each move.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1754,
+   "n_val_frames": 439,
+   "sizes": {
+    "0": 52,
+    "1": 281,
+    "2": 541,
+    "3": 154,
+    "4": 287
+   },
+   "skipped": [
+    0
+   ],
+   "n_models": 4,
+   "acc": 0.826879271070615,
+   "balanced": 0.8682981912355472,
+   "acc_avail": 0.8642857142857143,
+   "cover": 0.9567198177676538,
+   "recall": {
+    "1": 0.8539325842696629,
+    "2": 0.8595505617977528,
+    "3": 0.896551724137931,
+    "4": 0.8631578947368421
+   },
+   "worker": 3
+  },
+  {
+   "task": "Pour all the balls from the cup into the vase.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1419,
+   "n_val_frames": 355,
+   "sizes": {
+    "0": 308,
+    "1": 100,
+    "2": 213,
+    "3": 243,
+    "4": 200
+   },
+   "skipped": [
+    1
+   ],
+   "n_models": 4,
+   "acc": 0.8309859154929577,
+   "balanced": 0.8681529128522609,
+   "acc_avail": 0.8309859154929577,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.8910891089108911,
+    "2": 1.0,
+    "3": 0.6178861788617886,
+    "4": 0.9636363636363636
+   },
+   "worker": 1
+  },
+  {
+   "task": "Build a tower using the wooden blocks and wooden boards.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2908,
+   "n_val_frames": 729,
+   "sizes": {
+    "0": 215,
+    "1": 532,
+    "2": 177,
+    "3": 431,
+    "4": 824
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.821673525377229,
+   "balanced": 0.8087709328572075,
+   "acc_avail": 0.821673525377229,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.8208955223880597,
+    "1": 0.9717514124293786,
+    "2": 0.7283950617283951,
+    "3": 0.6956521739130435,
+    "4": 0.8271604938271605
+   },
+   "worker": 3
+  },
+  {
+   "task": "Pick up the broom, hand it over to the right hand, then use the dustpan to sweep the blocks.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2318,
+   "n_val_frames": 501,
+   "sizes": {
+    "0": 314,
+    "1": 43,
+    "2": 567,
+    "3": 120,
+    "4": 773
+   },
+   "skipped": [
+    1,
+    3
+   ],
+   "n_models": 3,
+   "acc": 0.6786427145708582,
+   "balanced": 0.7926062091503269,
+   "acc_avail": 0.8173076923076923,
+   "cover": 0.8303393213572854,
+   "recall": {
+    "0": 0.75,
+    "2": 0.9215686274509803,
+    "4": 0.70625
+   },
+   "worker": 1
+  },
+  {
+   "task": "Cover the blocks from left to right, remember their colors, then uncover them in the order: red, green, and blue.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2187,
+   "n_val_frames": 551,
+   "sizes": {
+    "0": 71,
+    "1": 510,
+    "2": 562,
+    "3": 306,
+    "4": 187
+   },
+   "skipped": [
+    0
+   ],
+   "n_models": 4,
+   "acc": 0.7676950998185118,
+   "balanced": 0.7481776330756876,
+   "acc_avail": 0.7906542056074767,
+   "cover": 0.9709618874773139,
+   "recall": {
+    "1": 0.8058823529411765,
+    "2": 0.8688524590163934,
+    "3": 0.751937984496124,
+    "4": 0.5660377358490566
+   },
+   "worker": 4
+  },
+  {
+   "task": "Fold the clothes neatly.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1221,
+   "n_val_frames": 305,
+   "sizes": {
+    "0": 24,
+    "1": 187,
+    "2": 369,
+    "3": 292,
+    "4": 44
+   },
+   "skipped": [
+    0,
+    4
+   ],
+   "n_models": 3,
+   "acc": 0.639344262295082,
+   "balanced": 0.7427983539094649,
+   "acc_avail": 0.7222222222222222,
+   "cover": 0.8852459016393442,
+   "recall": {
+    "1": 0.6825396825396826,
+    "2": 0.5952380952380952,
+    "3": 0.9506172839506173
+   },
+   "worker": 5
+  },
+  {
+   "task": "Press the two red buttons the required number of times according to the number cards, then press the blue button to confirm.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1543,
+   "n_val_frames": 388,
+   "sizes": {
+    "0": 41,
+    "1": 669,
+    "2": 187,
+    "3": 244,
+    "4": 14
+   },
+   "skipped": [
+    0,
+    4
+   ],
+   "n_models": 3,
+   "acc": 0.7963917525773195,
+   "balanced": 0.7363111323054099,
+   "acc_avail": 0.8196286472148541,
+   "cover": 0.9716494845360825,
+   "recall": {
+    "1": 0.9570815450643777,
+    "2": 0.7407407407407407,
+    "3": 0.5111111111111111
+   },
+   "worker": 3
+  },
+  {
+   "task": "Pour the liquid from the bottle into the cup.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 825,
+   "n_val_frames": 186,
+   "sizes": {
+    "0": 210,
+    "1": 27,
+    "2": 110,
+    "3": 166,
+    "4": 126
+   },
+   "skipped": [
+    1,
+    2,
+    4
+   ],
+   "n_models": 2,
+   "acc": 0.3978494623655914,
+   "balanced": 0.7,
+   "acc_avail": 0.7551020408163265,
+   "cover": 0.5268817204301075,
+   "recall": {
+    "0": 0.4,
+    "3": 1.0
+   },
+   "worker": 2
+  },
+  {
+   "task": "Arrange the letters to spell \"RoboDojo\" in a row.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2545,
+   "n_val_frames": 639,
+   "sizes": {
+    "0": 330,
+    "1": 211,
+    "2": 338,
+    "3": 688,
+    "4": 339
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.6557120500782473,
+   "balanced": 0.655750199766427,
+   "acc_avail": 0.6557120500782473,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.45454545454545453,
+    "1": 0.6190476190476191,
+    "2": 0.5,
+    "3": 0.8522167487684729,
+    "4": 0.8529411764705882
+   },
+   "worker": 1
+  },
+  {
+   "task": "Place the mouse on the mouse pad, push the keyboard into the frame, put the figurine on the stand, place the alarm clock on the drawer, then open the drawer and put all remaining miscellaneous items inside.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2577,
+   "n_val_frames": 615,
+   "sizes": {
+    "0": 96,
+    "1": 1119,
+    "2": 249,
+    "3": 198,
+    "4": 300
+   },
+   "skipped": [
+    0
+   ],
+   "n_models": 4,
+   "acc": 0.6943089430894309,
+   "balanced": 0.6272231894514504,
+   "acc_avail": 0.7387543252595156,
+   "cover": 0.9398373983739837,
+   "recall": {
+    "1": 0.8633540372670807,
+    "2": 0.6296296296296297,
+    "3": 0.3,
+    "4": 0.7159090909090909
+   },
+   "worker": 4
+  },
+  {
+   "task": "Push the T-shaped block to align it precisely with the gray T-shaped pad.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1444,
+   "n_val_frames": 317,
+   "sizes": {
+    "0": 136,
+    "1": 653,
+    "2": 84,
+    "3": 51,
+    "4": 203
+   },
+   "skipped": [
+    0,
+    2,
+    3
+   ],
+   "n_models": 2,
+   "acc": 0.47634069400630913,
+   "balanced": 0.6110248447204969,
+   "acc_avail": 0.5968379446640316,
+   "cover": 0.7981072555205048,
+   "recall": {
+    "1": 0.6630434782608695,
+    "4": 0.5590062111801242
+   },
+   "worker": 4
+  },
+  {
+   "task": "Place all stacking toy pieces onto the correct pegs.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 3671,
+   "n_val_frames": 902,
+   "sizes": {
+    "0": 321,
+    "1": 646,
+    "2": 920,
+    "3": 559,
+    "4": 323
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.656319290465632,
+   "balanced": 0.5927402756446167,
+   "acc_avail": 0.656319290465632,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.3770491803278688,
+    "1": 0.8701923076923077,
+    "2": 0.7666666666666667,
+    "3": 0.4692737430167598,
+    "4": 0.4805194805194805
+   },
+   "worker": 1
+  },
+  {
+   "task": "Arrange the five nesting dolls in a row from left to right, from smallest to largest.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2288,
+   "n_val_frames": 619,
+   "sizes": {
+    "0": 317,
+    "1": 268,
+    "2": 598,
+    "3": 308,
+    "4": 178
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.5282714054927302,
+   "balanced": 0.5920973707982693,
+   "acc_avail": 0.5282714054927302,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.6491228070175439,
+    "1": 0.5066666666666667,
+    "2": 0.5851851851851851,
+    "3": 0.4195121951219512,
+    "4": 0.8
+   },
+   "worker": 0
+  },
+  {
+   "task": "Pick up two slices of bread, place them into the toaster, and press the lever down.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2047,
+   "n_val_frames": 511,
+   "sizes": {
+    "0": 634,
+    "1": 67,
+    "2": 550,
+    "3": 226,
+    "4": 59
+   },
+   "skipped": [
+    1,
+    4
+   ],
+   "n_models": 3,
+   "acc": 0.6810176125244618,
+   "balanced": 0.5845588235294118,
+   "acc_avail": 0.8405797101449275,
+   "cover": 0.8101761252446184,
+   "recall": {
+    "0": 0.9411764705882353,
+    "2": 0.8125,
+    "3": 0.0
+   },
+   "worker": 0
+  },
+  {
+   "task": "Play tic-tac-toe as the first player and fill the board with the opponent.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 3400,
+   "n_val_frames": 873,
+   "sizes": {
+    "0": 1540,
+    "1": 300,
+    "2": 397,
+    "3": 153,
+    "4": 137
+   },
+   "skipped": [
+    4
+   ],
+   "n_models": 4,
+   "acc": 0.7124856815578465,
+   "balanced": 0.5839523654765774,
+   "acc_avail": 0.755771567436209,
+   "cover": 0.9427262313860252,
+   "recall": {
+    "0": 0.8232044198895028,
+    "1": 0.7983193277310925,
+    "2": 0.5714285714285714,
+    "3": 0.14285714285714285
+   },
+   "worker": 5
+  },
+  {
+   "task": "Wait for the opponent to discard a tile, then declare a kong with the matching tiles.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1501,
+   "n_val_frames": 376,
+   "sizes": {
+    "0": 268,
+    "1": 167,
+    "2": 339,
+    "3": 142,
+    "4": 209
+   },
+   "skipped": [
+    3
+   ],
+   "n_models": 4,
+   "acc": 0.5159574468085106,
+   "balanced": 0.5727132781048058,
+   "acc_avail": 0.6621160409556314,
+   "cover": 0.7792553191489362,
+   "recall": {
+    "0": 0.6585365853658537,
+    "1": 0.18518518518518517,
+    "2": 0.990990990990991,
+    "4": 0.45614035087719296
+   },
+   "worker": 4
+  },
+  {
+   "task": "Arrange the numbers from left to right to form the largest possible number, and place them on the pad.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2367,
+   "n_val_frames": 588,
+   "sizes": {
+    "0": 340,
+    "1": 206,
+    "2": 761,
+    "3": 302,
+    "4": 170
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.5272108843537415,
+   "balanced": 0.5245127387232651,
+   "acc_avail": 0.5272108843537415,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.6704545454545454,
+    "1": 0.48863636363636365,
+    "2": 0.5777777777777777,
+    "3": 0.3769230769230769,
+    "4": 0.5087719298245614
+   },
+   "worker": 2
+  },
+  {
+   "task": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1745,
+   "n_val_frames": 457,
+   "sizes": {
+    "0": 236,
+    "1": 667,
+    "2": 104,
+    "3": 111,
+    "4": 170
+   },
+   "skipped": [
+    2,
+    3
+   ],
+   "n_models": 3,
+   "acc": 0.6892778993435449,
+   "balanced": 0.5204288198140657,
+   "acc_avail": 0.7015590200445434,
+   "cover": 0.9824945295404814,
+   "recall": {
+    "0": 0.2125,
+    "1": 0.8733766233766234,
+    "4": 0.47540983606557374
+   },
+   "worker": 0
+  },
+  {
+   "task": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 3069,
+   "n_val_frames": 685,
+   "sizes": {
+    "0": 639,
+    "1": 313,
+    "2": 640,
+    "3": 543,
+    "4": 249
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.47883211678832116,
+   "balanced": 0.44689800910295735,
+   "acc_avail": 0.47883211678832116,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.4583333333333333,
+    "1": 0.45348837209302323,
+    "2": 0.6440677966101694,
+    "3": 0.3739130434782609,
+    "4": 0.3046875
+   },
+   "worker": 2
+  },
+  {
+   "task": "Hang all the mugs on the mug rack.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 2303,
+   "n_val_frames": 593,
+   "sizes": {
+    "0": 336,
+    "1": 240,
+    "2": 518,
+    "3": 186,
+    "4": 430
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.5143338954468802,
+   "balanced": 0.4094782484011411,
+   "acc_avail": 0.5143338954468802,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.47580645161290325,
+    "1": 0.08571428571428572,
+    "2": 0.6179775280898876,
+    "3": 0.34615384615384615,
+    "4": 0.5217391304347826
+   },
+   "worker": 0
+  },
+  {
+   "task": "Place all the objects into the box with their front sides facing left.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 3240,
+   "n_val_frames": 825,
+   "sizes": {
+    "0": 565,
+    "1": 445,
+    "2": 311,
+    "3": 486,
+    "4": 608
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.35515151515151516,
+   "balanced": 0.3625496415474897,
+   "acc_avail": 0.35515151515151516,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.17180616740088106,
+    "1": 0.33519553072625696,
+    "2": 0.34146341463414637,
+    "3": 0.42962962962962964,
+    "4": 0.5346534653465347
+   },
+   "worker": 2
+  },
+  {
+   "task": "Insert and tighten each screw into the nut of the same color.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 5483,
+   "n_val_frames": 1334,
+   "sizes": {
+    "0": 1324,
+    "1": 232,
+    "2": 377,
+    "3": 339,
+    "4": 1877
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.3988005997001499,
+   "balanced": 0.3544751191070499,
+   "acc_avail": 0.3988005997001499,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.5221674876847291,
+    "1": 0.09090909090909091,
+    "2": 0.5447761194029851,
+    "3": 0.21036585365853658,
+    "4": 0.40415704387990764
+   },
+   "worker": 3
+  },
+  {
+   "task": "Sort the objects by category into the three baskets.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 3183,
+   "n_val_frames": 729,
+   "sizes": {
+    "0": 387,
+    "1": 414,
+    "2": 878,
+    "3": 532,
+    "4": 243
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.4375857338820302,
+   "balanced": 0.34638169079786607,
+   "acc_avail": 0.4375857338820302,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.3979591836734694,
+    "1": 0.19411764705882353,
+    "2": 0.6160220994475138,
+    "3": 0.3333333333333333,
+    "4": 0.19047619047619047
+   },
+   "worker": 0
+  },
+  {
+   "task": "Observe the object placement order, remember it, then place the corresponding objects into the basket in the same order.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 4697,
+   "n_val_frames": 1178,
+   "sizes": {
+    "0": 452,
+    "1": 492,
+    "2": 635,
+    "3": 632,
+    "4": 1308
+   },
+   "skipped": [],
+   "n_models": 5,
+   "acc": 0.3455008488964346,
+   "balanced": 0.34388517709959177,
+   "acc_avail": 0.3455008488964346,
+   "cover": 1.0,
+   "recall": {
+    "0": 0.04918032786885246,
+    "1": 0.3643410852713178,
+    "2": 0.6494252873563219,
+    "3": 0.26436781609195403,
+    "4": 0.39211136890951276
+   },
+   "worker": 5
+  },
+  {
+   "task": "Remember the first object on the conveyor, then pick the matching object when it appears again.",
+   "status": "ok",
+   "k": 5,
+   "n_ep": 20,
+   "n_frames": 1911,
+   "n_val_frames": 478,
+   "sizes": {
+    "0": 213,
+    "1": 361,
+    "2": 212,
+    "3": 510,
+    "4": 137
+   },
+   "skipped": [
+    4
+   ],
+   "n_models": 4,
+   "acc": 0.19456066945606695,
+   "balanced": 0.26059034330205894,
+   "acc_avail": 0.24603174603174602,
+   "cover": 0.7907949790794979,
+   "recall": {
+    "0": 0.44339622641509435,
+    "1": 0.17054263565891473,
+    "2": 0.16783216783216784
+   },
+   "worker": 5
+  },
+  {
+   "task": "Plug the charger into the power strip.",
+   "status": "skip",
+   "reason": "only 1 trainable classes",
+   "worker": 0
+  },
+  {
+   "task": "Stack the three blocks with different textures.",
+   "status": "skip",
+   "reason": "only 1 trainable classes",
+   "worker": 1
+  },
+  {
+   "task": "Stack the three bowls together.",
+   "status": "skip",
+   "reason": "only 1 trainable classes",
+   "worker": 2
+  },
+  {
+   "task": "Pick up the key, hand it over to the other hand, insert it into the keyhole, then turn it.",
+   "status": "skip",
+   "reason": "only 1 trainable classes",
+   "worker": 3
+  }
+ ]
+}
