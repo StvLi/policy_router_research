@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>__TITLE__</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#0b0d12; color:#d8dee9; font:13px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; overflow:hidden; }
+  #wrap { display:flex; height:100vh; }
+  #side { width:290px; flex:0 0 290px; background:#11141b; border-right:1px solid #202533; padding:14px; overflow-y:auto; }
+  #stage { position:relative; flex:1; display:flex; gap:1px; background:#202533; }
+  .pane { position:relative; flex:1; display:flex; flex-direction:column; background:#0b0d12; min-width:0; }
+  .ptitle { flex:0 0 auto; padding:5px 10px; font-size:11px; color:#8b95a8;
+            background:#0e1118; border-bottom:1px solid #1b202c; letter-spacing:.2px; }
+  .ptitle b { color:#cfd6e2; font-weight:600; }
+  .ptitle .warn { color:#e0a33a; margin-left:6px; }
+  .pane canvas { flex:1; display:block; width:100%; min-height:0; cursor:grab; }
+  .pane canvas.dragging { cursor:grabbing; }
+  canvas { display:block; width:100%; height:100%; cursor:grab; }
+  canvas.dragging { cursor:grabbing; }
+  h1 { font-size:13px; margin:0 0 4px; font-weight:600; letter-spacing:.2px; }
+  .sub { color:#7c8698; font-size:11px; margin-bottom:12px; }
+  .grp { margin:12px 0; padding-top:10px; border-top:1px solid #1d2230; }
+  .grp:first-of-type { border-top:none; }
+  .lbl { color:#8b95a8; font-size:11px; text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+  label.row { display:flex; align-items:center; gap:7px; padding:2px 0; cursor:pointer; }
+  label.row:hover { background:#161a24; }
+  .btnrow { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .btnrow button { width:auto; padding:5px 6px; font-size:11.5px; }
+  .slider { display:flex; align-items:center; gap:8px; padding:3px 0; }
+  .slider span { color:#8b95a8; font-size:11.5px; white-space:nowrap; flex:0 0 46px; }
+  .slider input { flex:1; min-width:0; }
+  .sw { width:11px; height:11px; border-radius:2px; flex:0 0 11px; }
+  .cnt { color:#5f6a7d; margin-left:auto; font-variant-numeric:tabular-nums; }
+  select, input[type=range] { width:100%; }
+  select { background:#1a1f2b; color:#d8dee9; border:1px solid #2a3142; border-radius:4px; padding:4px; }
+  button { background:#1a1f2b; color:#cfd6e2; border:1px solid #2a3142; border-radius:4px; padding:5px 9px; cursor:pointer; width:100%; }
+  button:hover { background:#222838; }
+  .kv { display:flex; justify-content:space-between; font-size:11px; color:#8b95a8; padding:1px 0; }
+  .kv b { color:#cfd6e2; font-weight:600; font-variant-numeric:tabular-nums; }
+  #tip { position:absolute; pointer-events:none; background:#141922ee; border:1px solid #2a3142; border-radius:5px;
+         padding:6px 8px; font-size:11px; line-height:1.45; display:none; white-space:nowrap; }
+  #legend { position:absolute; right:12px; bottom:12px; background:#11141bdd; border:1px solid #202533;
+            border-radius:6px; padding:8px 10px; font-size:10.5px; color:#8b95a8; }
+  #legend .bar { height:8px; border-radius:2px; margin:3px 0 2px; }
+  .hint { position:absolute; left:12px; bottom:12px; color:#4e5766; font-size:11px; }
+  #vid { position:absolute; left:12px; top:46px; width:344px; background:#11141bee;
+         border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
+  #vid.on { display:block; }
+  #vid video { width:100%; border-radius:4px; display:block; background:#000; }
+  #vhead { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vhead b { color:#d8dee9; font-weight:600; }
+  #vcap { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
+  #vseek { width:100%; margin:6px 0 2px; accent-color:#4c9be8; height:14px; }
+  #vtime { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
+  #vcap .chip { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
+  #vbtn { margin-left:auto; width:auto; padding:2px 8px; font-size:11px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="side">
+    <h1 id="ttl"></h1>
+    <div class="sub" id="sub"></div>
+
+    <div class="grp">
+      <div class="lbl">着色方式</div>
+      <select id="cmode">
+        <option value="cls">子任务类别</option>
+        <option value="ang">相位角（绕环角度）</option>
+        <option value="t">时间</option>
+        <option value="score">不典型度（越大越不像）</option>
+        <option value="ep">episode</option>
+      </select>
+    </div>
+
+    <div class="grp" id="clsbox">
+      <div class="lbl">子任务（点击显示/隐藏）</div>
+      <div id="clss"></div>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">轨迹</div>
+      <select id="epsel"><option value="-1">（不显示轨迹）</option></select>
+      <label class="row" style="margin-top:6px"><input type="checkbox" id="dim"> 淡化其它点</label>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">评测栏（右）</div>
+      <label class="row"><input type="checkbox" id="evShow" checked> 显示评测点（白）</label>
+      <label class="row"><input type="checkbox" id="evLines" checked> 连成轨迹</label>
+      <label class="row"><input type="checkbox" id="evOkOnly"> 只看成功帧</label>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">视角预设</div>
+      <div class="btnrow">
+        <button data-preset="iso">等轴测</button>
+        <button data-preset="p12">看 PC1-PC2</button>
+        <button data-preset="p23">看 PC2-PC3</button>
+        <button data-preset="p13">看 PC1-PC3</button>
+      </div>
+      <label class="row" style="margin-top:8px"><input type="checkbox" id="spin"> 自动旋转</label>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">显示</div>
+      <div class="slider"><span>点大小</span><input type="range" id="psize" min="1" max="6" step="0.5" value="2.5"></div>
+      <div class="slider"><span>透视</span><input type="range" id="fov" min="150" max="1200" step="10" value="520"></div>
+      <button id="reset" style="margin-top:8px">重置视角</button>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">信息</div>
+      <div class="kv"><span>点数</span><b id="k_n"></b></div>
+      <div class="kv"><span>episode</span><b id="k_ep"></b></div>
+      <div class="kv"><span>PC1 / PC2 / PC3</span><b id="k_var"></b></div>
+      <div class="kv"><span>显示中</span><b id="k_shown"></b></div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="pane" id="paneA">
+      <div class="ptitle"><b>训练数据 · 演示</b> · 10,366 帧 / 100 集 · 按子任务着色</div>
+      <canvas id="cv"></canvas>
+    </div>
+    <div class="pane" id="paneB">
+      <div class="ptitle"><b>评测轨迹 · VLM-VLA 联合测试</b> · 7,828 帧 / 50 个 rollout
+        <span class="warn">近似投影（评测未存关节状态）</span></div>
+      <canvas id="cv2"></canvas>
+    </div>
+    <div id="vid">
+      <div id="vhead"><b id="vtitle">—</b><button id="vbtn">暂停</button></div>
+      <video id="v" muted loop playsinline preload="auto"></video>
+      <input type="range" id="vseek" min="0" max="100" step="0.1" value="0">
+      <div id="vtime"></div>
+      <div id="vcap"></div>
+    </div>
+    <div id="tip"></div>
+    <div id="legend"></div>
+    <div class="hint">拖动旋转 · 滚轮缩放 · 右键/Shift 拖动平移 · 双击重置</div>
+  </div>
+</div>
+
+<script>
+const META = __META__;
+const DATA = __DATA__;
+
+function dec(b64, Type) {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Type(u8.buffer);
+}
+const PC = dec(DATA.pc, Float32Array);
+const CLS = dec(DATA.cls, Uint8Array);
+const EPI = dec(DATA.ep, Int32Array);
+const OFF = dec(DATA.off, Int32Array);
+const TT = dec(DATA.t, Float32Array);
+const SC = dec(DATA.score, Float32Array);
+const ANG = dec(DATA.ang, Float32Array);
+const N = META.n;
+
+// 评测栏
+const EV = DATA.ev || {};
+const EVZ = EV.n ? dec(EV.z, Float32Array) : new Float32Array(0);
+const EVT = EV.n ? dec(EV.t, Float32Array) : new Float32Array(0);
+const EVEP = EV.n ? dec(EV.ep, Int32Array) : new Int32Array(0);
+const EVOFF = EV.n ? dec(EV.off, Int32Array) : new Int32Array(1);
+const EVOK = EV.n ? dec(EV.ok, Uint8Array) : new Uint8Array(0);
+const EVCFG = EV.n ? dec(EV.cfg, Uint8Array) : new Uint8Array(0);
+const NE = EV.n || 0;
+
+const PAL = ['#4c9be8','#f0932b','#2ecc71','#e74c3c','#9b59b6','#1abc9c','#e67e22','#95a5a6',
+             '#3498db','#e84393','#00b894','#fdcb6e','#6c5ce7','#d63031','#00cec9','#b2bec3'];
+const clsList = Object.keys(META.cls_counts).map(Number).sort((a,b)=>a-b);
+const clsColor = {}; clsList.forEach((c,i)=> clsColor[c] = PAL[i % PAL.length]);
+const clsVisible = {}; clsList.forEach(c => clsVisible[c] = true);
+
+// ---------- 相机（两栏共享） ----------
+let yaw = -0.6, pitch = 0.5, zoom = 1, panX = 0, panY = 0, fov = 520;
+let DPR = 1;
+let selEpIdx = -1;                 // 训练栏当前选中的 episode（-1 = 不显示轨迹）
+
+function mkPane(id) {
+  const el = document.getElementById(id);
+  const o = { el, ctx: el.getContext('2d'), bgCv: document.createElement('canvas'), W: 0, H: 0 };
+  o.bg = o.bgCv.getContext('2d');
+  return o;
+}
+const PA = mkPane('cv'), PB = mkPane('cv2');
+
+let ext = 0;
+for (let i = 0; i < 3 * N; i++) ext = Math.max(ext, Math.abs(PC[i]));
+if (NE) for (let i = 0; i < 3 * NE; i++) ext = Math.max(ext, Math.abs(EVZ[i]));
+ext = ext || 1;
+
+function alloc(P, n) {
+  if (P.n === n) return;
+  P.n = n;
+  P.sx = new Float32Array(n); P.sy = new Float32Array(n);
+  P.ssz = new Float32Array(n); P.zrot = new Float32Array(n);
+}
+alloc(PA, N); alloc(PB, NE);
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  for (const P of [PA, PB]) {
+    const r = P.el.getBoundingClientRect();
+    P.W = Math.max(1, Math.round(r.width * DPR));
+    P.H = Math.max(1, Math.round(r.height * DPR));
+    P.el.width = P.W; P.el.height = P.H;
+    P.bgCv.width = P.W; P.bgCv.height = P.H;
+  }
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ---------- 颜色映射 ----------
+function ramp(v, stops) {
+  v = Math.max(0, Math.min(1, v));
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i], b = stops[i+1];
+    if (v >= a[0] && v <= b[0]) {
+      const t = (v - a[0]) / Math.max(1e-9, b[0] - a[0]);
+      const c = [0,1,2].map(j => Math.round(a[1][j] + t * (b[1][j] - a[1][j])));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  const c = stops[stops.length-1][1];
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+const CMAP_T = [[0,[40,20,90]],[0.25,[30,120,180]],[0.5,[40,190,120]],[0.75,[250,200,60]],[1,[250,240,180]]];
+const CMAP_S = [[0,[20,70,130]],[0.5,[250,200,60]],[1,[200,30,30]]];
+
+let cmode = 'cls';
+{
+  const p = Array.from(SC).sort((a,b)=>a-b);
+  window.__slo = p[Math.floor(0.02*p.length)]; window.__shi = p[Math.floor(0.98*p.length)];
+}
+function colorOf(i) {
+  switch (cmode) {
+    case 'cls':   return clsColor[CLS[i]] || '#888';
+    case 'ang':   return ramp((ANG[i] + Math.PI) / (2*Math.PI), CMAP_T);
+    case 't':     return ramp(TT[i] / (META.t_max || 1), CMAP_T);
+    case 'score': return ramp((SC[i] - window.__slo) / Math.max(1e-6, window.__shi - window.__slo), CMAP_S);
+    case 'ep':    return PAL[EPI[i] % PAL.length];
+  }
+  return '#888';
+}
+
+// ---------- 投影 ----------
+function updateCam(P) {
+  const cyw = Math.cos(yaw), syw = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const scale0 = Math.min(P.W, P.H) * 0.42 * zoom / ext;
+  return { cyw, syw, cp, sp, scale0, cx: P.W/2 + panX*DPR, cyy: P.H/2 + panY*DPR };
+}
+
+function projectAll(P, X3) {
+  const cam = updateCam(P);
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
+  for (let i = 0; i < P.n; i++) {
+    const x = X3[3*i], y = X3[3*i+1], z = X3[3*i+2];
+    const x1 = cyw * x + syw * z;
+    const z1 = -syw * x + cyw * z;
+    const y2 = cp * y - sp * z1;
+    const z2 = sp * y + cp * z1;
+    P.zrot[i] = z2;
+    const f = fov / (fov + z2 * ext * 1.2);
+    P.sx[i] = cx + x1 * scale0 * f;
+    P.sy[i] = cyy - y2 * scale0 * f;
+    P.ssz[i] = f;
+  }
+  return cam;
+}
+
+function project(x, y, z, cam, P) {
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
+  const x1 = cyw * x + syw * z;
+  const z1 = -syw * x + cyw * z;
+  const y2 = cp * y - sp * z1;
+  const z2 = sp * y + cp * z1;
+  const f = fov / (fov + z2 * ext * 1.2);
+  return [cx + x1 * scale0 * f, cyy - y2 * scale0 * f];
+}
+
+function drawAxes(P, g, cam) {
+  const o = project(0,0,0, cam, P);
+  const cols = [['#c0392b', [ext,0,0], `PC1 ${META.pc_var[0]}%`],
+                ['#27ae60', [0,ext,0], `PC2 ${META.pc_var[1]}%`],
+                ['#2980b9', [0,0,ext], `PC3 ${META.pc_var[2]}%`]];
+  for (const [col, v, lab] of cols) {
+    const p = project(v[0], v[1], v[2], cam, P);
+    g.strokeStyle = col; g.globalAlpha = 0.45; g.lineWidth = 1.2 * DPR;
+    g.beginPath(); g.moveTo(o[0], o[1]); g.lineTo(p[0], p[1]); g.stroke();
+    g.globalAlpha = 0.8; g.fillStyle = col; g.font = `${11*DPR}px sans-serif`;
+    g.fillText(lab, p[0] + 4*DPR, p[1] - 4*DPR);
+  }
+  g.globalAlpha = 1;
+}
+
+// ---------- 训练栏 ----------
+function drawStaticA() {
+  const P = PA;
+  const cam = projectAll(P, PC);
+  const g = P.bg;
+  g.clearRect(0, 0, P.W, P.H); g.fillStyle = '#0b0d12'; g.fillRect(0, 0, P.W, P.H);
+  drawAxes(P, g, cam);
+
+  const ord = new Array(N); for (let i = 0; i < N; i++) ord[i] = i;
+  ord.sort((a, b) => P.zrot[a] - P.zrot[b]);
+
+  const base = parseFloat(document.getElementById('psize').value);
+  const dimOn = document.getElementById('dim').checked;
+  let shown = 0;
+  for (let k = 0; k < N; k++) {
+    const i = ord[k];
+    if (cmode === 'cls' && !clsVisible[CLS[i]]) continue;
+    if (dimOn && selEpIdx >= 0 && EPI[i] !== selEpIdx) continue;
+    const s = base * P.ssz[i] * DPR;
+    g.fillStyle = colorOf(i); g.globalAlpha = 0.55;
+    g.fillRect(P.sx[i] - s/2, P.sy[i] - s/2, s, s);
+    shown++;
+  }
+  g.globalAlpha = 1;
+
+  if (selEpIdx >= 0) {
+    const a0 = OFF[selEpIdx], a1 = OFF[selEpIdx + 1];
+    g.lineWidth = 1.8 * DPR; g.lineCap = 'round';
+    for (let i = a0; i + 1 < a1; i++) {
+      const t = (TT[i] - TT[a0]) / Math.max(1e-6, TT[a1-1] - TT[a0]);
+      g.strokeStyle = ramp(t, CMAP_T); g.globalAlpha = 0.95;
+      g.beginPath(); g.moveTo(P.sx[i], P.sy[i]); g.lineTo(P.sx[i+1], P.sy[i+1]); g.stroke();
+    }
+    const s0 = Math.max(2.6, base) * DPR * 1.6;
+    g.globalAlpha = 1;
+    g.beginPath(); g.arc(P.sx[a0], P.sy[a0], s0, 0, 7); g.fillStyle = '#2ecc71'; g.fill();
+    g.strokeStyle = '#000'; g.lineWidth = 1.2*DPR; g.stroke();
+    g.beginPath(); g.arc(P.sx[a1-1], P.sy[a1-1], s0, 0, 7); g.fillStyle = '#e74c3c'; g.fill(); g.stroke();
+  }
+  document.getElementById('k_shown').textContent = shown.toLocaleString();
+}
+
+// ---------- 评测栏（本阶段全部白点） ----------
+function drawStaticB() {
+  const P = PB;
+  const cam = projectAll(P, EVZ);
+  const g = P.bg;
+  g.clearRect(0, 0, P.W, P.H); g.fillStyle = '#0b0d12'; g.fillRect(0, 0, P.W, P.H);
+  drawAxes(P, g, cam);
+  if (!NE) { g.fillStyle = '#54607a'; g.font = `${13*DPR}px sans-serif`;
+             g.fillText('（无评测数据）', 20*DPR, 40*DPR); return; }
+
+  const showPts = document.getElementById('evShow').checked;
+  const showLines = document.getElementById('evLines').checked;
+  const okOnly = document.getElementById('evOkOnly').checked;
+
+  // 轨迹连线（淡白）
+  if (showLines) {
+    g.strokeStyle = '#dfe7f3'; g.globalAlpha = 0.10; g.lineWidth = 1.0 * DPR;
+    for (let r = 0; r + 1 < EVOFF.length; r++) {
+      const a0 = EVOFF[r], a1 = EVOFF[r + 1];
+      if (a1 - a0 < 2) continue;
+      g.beginPath();
+      let started = false;
+      for (let i = a0; i < a1; i++) {
+        if (okOnly && !EVOK[i]) continue;
+        if (!started) { g.moveTo(P.sx[i], P.sy[i]); started = true; } else g.lineTo(P.sx[i], P.sy[i]);
+      }
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+
+  if (showPts) {
+    const base = parseFloat(document.getElementById('psize').value) * 0.85;
+    const ord = new Array(NE); for (let i = 0; i < NE; i++) ord[i] = i;
+    ord.sort((a, b) => P.zrot[a] - P.zrot[b]);
+    for (let k = 0; k < NE; k++) {
+      const i = ord[k];
+      if (okOnly && !EVOK[i]) continue;
+      const s = base * P.ssz[i] * DPR;
+      g.fillStyle = '#f2f6fc'; g.globalAlpha = 0.38;
+      g.fillRect(P.sx[i] - s/2, P.sy[i] - s/2, s, s);
+    }
+    g.globalAlpha = 1;
+  }
+}
+
+// ---------- 动态层 ----------
+function sampleAtTime(epi, t) {
+  const a0 = OFF[epi], a1 = OFF[epi+1];
+  if (a1 <= a0) return -1;
+  let lo = a0, hi = a1 - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (TT[mid] < t) lo = mid + 1; else hi = mid; }
+  let i = lo;
+  if (i > a0 && Math.abs(TT[i-1] - t) < Math.abs(TT[i] - t)) i--;
+  return i;
+}
+function segAt(epi, t) {
+  const segs = (META.segs && META.segs[String(epi)]) || [];
+  for (const s of segs) if (t >= s[0] && t < s[1]) return s;
+  return segs.length ? segs[segs.length-1] : null;
+}
+
+function drawMarker() {
+  if (selEpIdx < 0) return;
+  const P = PA, ctx = P.ctx;
+  const v = document.getElementById('v');
+  const t = (v && v.readyState > 0) ? v.currentTime : 0;
+  const i = sampleAtTime(selEpIdx, t);
+  if (i < 0) return;
+  const seg = segAt(selEpIdx, t);
+  const col = (seg && seg[3] >= 0) ? clsColor[seg[3]] : '#ffffff';
+
+  const a0 = OFF[selEpIdx];
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.9; ctx.lineWidth = 2.6 * DPR;
+  ctx.beginPath();
+  let started = false;
+  for (let j = i; j >= a0 && TT[i] - TT[j] <= 1.2; j--) {
+    if (!started) { ctx.moveTo(P.sx[j], P.sy[j]); started = true; } else ctx.lineTo(P.sx[j], P.sy[j]);
+  }
+  ctx.stroke();
+
+  const r = 7 * DPR;
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(P.sx[i], P.sy[i], r, 0, 7);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * DPR; ctx.stroke();
+  ctx.beginPath(); ctx.arc(P.sx[i], P.sy[i], r * 2.2, 0, 7);
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6 * DPR; ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  if (typeof syncSeek === 'function') syncSeek();
+  const cap = document.getElementById('vcap');
+  if (seg) {
+    cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
+      + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+  }
+}
+
+function drawDynamic() {
+  PA.ctx.drawImage(PA.bgCv, 0, 0);
+  PB.ctx.drawImage(PB.bgCv, 0, 0);
+  drawMarker();
+}
+
+function draw() { drawStaticA(); drawStaticB(); drawDynamic(); }
+
+let playReq = null;
+function startLoop() {
+  if (playReq) return;
+  const step = () => { drawDynamic(); playReq = requestAnimationFrame(step); };
+  playReq = requestAnimationFrame(step);
+}
+function stopLoop() {
+  if (playReq) { cancelAnimationFrame(playReq); playReq = null; }
+  drawDynamic();
+}
+
+// ---------- 交互 ----------
+let drag = null;
+for (const P of [PA, PB]) {
+  P.el.addEventListener('mousedown', e => {
+    drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey };
+    P.el.classList.add('dragging'); e.preventDefault();
+  });
+  P.el.addEventListener('contextmenu', e => e.preventDefault());
+  P.el.addEventListener('wheel', e => {
+    e.preventDefault();
+    zoom = Math.max(0.25, Math.min(8, zoom * Math.exp(-e.deltaY * 0.0012)));
+    draw();
+  }, { passive: false });
+  P.el.addEventListener('dblclick', () => resetView());
+}
+window.addEventListener('mousemove', e => {
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (drag.pan) { panX += dx; panY += dy; }
+    else { yaw += dx * 0.008; pitch = Math.max(-1.55, Math.min(1.55, pitch + dy * 0.008)); }
+    draw();
+  } else hover(e);
+});
+window.addEventListener('mouseup', () => {
+  drag = null; PA.el.classList.remove('dragging'); PB.el.classList.remove('dragging');
+});
+
+const PRESETS = { iso: [-0.6, 0.5], p12: [0, 0], p23: [-Math.PI/2, 0], p13: [0, 1.45] };
+function resetView() { [yaw, pitch] = PRESETS.iso; zoom = 1; panX = 0; panY = 0; draw(); }
+document.getElementById('reset').onclick = resetView;
+document.querySelectorAll('[data-preset]').forEach(b => {
+  b.onclick = () => { [yaw, pitch] = PRESETS[b.dataset.preset]; draw(); };
+});
+let spinReq = null;
+document.getElementById('spin').onchange = e => {
+  if (e.target.checked) {
+    const step = () => { yaw += 0.006; draw(); spinReq = requestAnimationFrame(step); };
+    spinReq = requestAnimationFrame(step);
+  } else if (spinReq) { cancelAnimationFrame(spinReq); spinReq = null; }
+};
+
+function hover(e) {
+  const tip = document.getElementById('tip');
+  let hit = null;
+  for (const P of [PA, PB]) {
+    const r = P.el.getBoundingClientRect();
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+      hit = { P, mx: (e.clientX - r.left) * DPR, my: (e.clientY - r.top) * DPR, r,
+              px: e.clientX - r.left, py: e.clientY - r.top };
+      break;
+    }
+  }
+  if (!hit) { tip.style.display = 'none'; return; }
+  const { P, mx, my } = hit;
+  let best = -1, bd = (9 * DPR) ** 2;
+  if (P === PA) {
+    for (let i = 0; i < N; i++) {
+      if (cmode === 'cls' && !clsVisible[CLS[i]]) continue;
+      const d = (P.sx[i]-mx)**2 + (P.sy[i]-my)**2;
+      if (d < bd) { bd = d; best = i; }
+    }
+  } else {
+    for (let i = 0; i < NE; i++) {
+      const d = (P.sx[i]-mx)**2 + (P.sy[i]-my)**2;
+      if (d < bd) { bd = d; best = i; }
+    }
+  }
+  if (best < 0) { tip.style.display = 'none'; return; }
+  tip.style.display = 'block';
+  tip.style.left = (hit.px + 14) + 'px';
+  tip.style.top = (hit.py + 14) + 'px';
+  if (P === PA) {
+    tip.innerHTML = `训练 · ep${META.ep_names[EPI[best]]}　t=${TT[best].toFixed(2)}s<br>`
+      + `类 c${CLS[best]}　相位 ${(ANG[best]*180/Math.PI).toFixed(0)}°<br>`
+      + `不典型度 ${SC[best].toFixed(3)}`;
+  } else {
+    const ro = (META.ev_rollouts || [])[EVEP[best]] || {};
+    tip.innerHTML = `评测 · #${EVEP[best]}　${ro.cfg || '?'} · layout ${ro.layout || '?'}<br>`
+      + `${ro.ok ? '成功' : '失败'}　t=${EVT[best].toFixed(2)}s`;
+  }
+}
+
+// ---------- 侧栏 ----------
+document.getElementById('ttl').textContent = '潜空间浏览器';
+document.getElementById('sub').textContent = META.title;
+document.getElementById('k_n').textContent = META.n.toLocaleString();
+document.getElementById('k_ep').textContent = META.n_ep;
+document.getElementById('k_var').textContent = META.pc_var.join(' / ') + ' %';
+
+const clsBox = document.getElementById('clss');
+clsList.forEach(c => {
+  const row = document.createElement('label');
+  row.className = 'row';
+  row.innerHTML = `<input type="checkbox" checked data-c="${c}">
+    <span class="sw" style="background:${clsColor[c]}"></span>
+    <span>c${c}</span><span class="cnt">${(META.cls_counts[c]||0).toLocaleString()}</span>`;
+  row.querySelector('input').onchange = ev => { clsVisible[c] = ev.target.checked; draw(); };
+  clsBox.appendChild(row);
+});
+
+const epSel = document.getElementById('epsel');
+META.ep_names.forEach((name, i) => {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)`;
+  epSel.appendChild(o);
+});
+epSel.onchange = () => { selEpIdx = parseInt(epSel.value, 10); setVideo(selEpIdx); draw(); };
+
+const vEl = document.getElementById('v');
+const vBox = document.getElementById('vid');
+const vBtn = document.getElementById('vbtn');
+const vSeek = document.getElementById('vseek');
+const vTime = document.getElementById('vtime');
+
+function setVideo(epi) {
+  if (epi < 0) {
+    vEl.pause(); vEl.innerHTML = ''; vEl.load();
+    vBox.classList.remove('on'); stopLoop(); return;
+  }
+  const name = META.ep_names[epi];
+  vEl.innerHTML = '';
+  for (const [dir, ext, type] of [[META.videoDir, 'mp4', 'video/mp4'],
+                                  [META.videoDir + '_webm', 'webm', 'video/webm']]) {
+    const s = document.createElement('source');
+    s.src = `${dir}/${name}.${ext}`; s.type = type;
+    vEl.appendChild(s);
+  }
+  vEl.load();
+  document.getElementById('vtitle').textContent = name;
+  vBox.classList.add('on');
+  const p = vEl.play();
+  if (p && p.catch) p.catch(() => { vBtn.textContent = '播放'; });
+}
+vBtn.onclick = () => { if (vEl.paused) vEl.play(); else vEl.pause(); };
+
+let seeking = false;
+vSeek.addEventListener('pointerdown', () => { seeking = true; });
+vSeek.addEventListener('pointerup',   () => { seeking = false; });
+vSeek.addEventListener('input', () => {
+  const d = vEl.duration || 0;
+  if (d > 0) { vEl.currentTime = (vSeek.value / 1000) * d; drawDynamic(); }
+});
+function syncSeek() {
+  const d = vEl.duration || 0;
+  if (d > 0 && !seeking) vSeek.value = (vEl.currentTime / d) * 1000;
+  vTime.innerHTML = `<span>${vEl.currentTime.toFixed(2)}s</span><span>${(d||0).toFixed(2)}s</span>`;
+}
+vEl.addEventListener('timeupdate', syncSeek);
+vEl.addEventListener('loadedmetadata', syncSeek);
+vEl.addEventListener('seeked', () => { syncSeek(); drawDynamic(); });
+vEl.addEventListener('play',  () => { vBtn.textContent = '暂停'; startLoop(); });
+vEl.addEventListener('pause', () => { vBtn.textContent = '播放'; stopLoop(); });
+vEl.addEventListener('error', () => {
+  document.getElementById('vcap').innerHTML =
+    `<span style="color:#e17055">找不到视频：${META.videoDir}/${META.ep_names[selEpIdx]}.mp4</span>`;
+});
+
+document.getElementById('dim').onchange = () => draw();
+document.getElementById('psize').oninput = () => draw();
+document.getElementById('fov').oninput = e => { fov = parseFloat(e.target.value); draw(); };
+document.getElementById('cmode').onchange = e => {
+  cmode = e.target.value;
+  document.getElementById('clsbox').style.display = (cmode === 'cls') ? '' : 'none';
+  updateLegend(); draw();
+};
+['evShow', 'evLines', 'evOkOnly'].forEach(id => {
+  document.getElementById(id).onchange = () => draw();
+});
+
+function updateLegend() {
+  const el = document.getElementById('legend');
+  if (cmode === 'cls') {
+    el.innerHTML = clsList.map(c => `<div><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${clsColor[c]};margin-right:5px"></span>c${c}</div>`).join('');
+  } else if (cmode === 'ep') {
+    el.textContent = '每个 episode 一种颜色（循环取色）';
+  } else {
+    const name = {ang:'相位角 −π → π', t:'时间 0 → ' + META.t_max.toFixed(1) + 's', score:'不典型度 低 → 高'}[cmode];
+    const grad = Array.from({length: 40}, (_, i) => ramp(i/39, cmode === 'score' ? CMAP_S : CMAP_T)).join(',');
+    el.innerHTML = `${name}<div class="bar" style="width:150px;background:linear-gradient(90deg,${grad})"></div>`;
+  }
+}
+updateLegend();
+resize();
+
+</script>
+</body>
+</html>
