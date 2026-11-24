@@ -19,7 +19,8 @@ docs/
   PLAN_CN.md                 ← 当前计划的完整说明（标准汉语，可独立阅读）
   PRIOR_RESULTS_20261124.md  ← 前序 900 次试验的核对，以及它推翻了哪几条前提
   PILOT_STORE_LAPTOP.md      ← 单任务试点：第 1/2/3 步全部跑通，含消融与 OOD 验证
-  ROUTE_B_ATOMIC_SKILLS.md   ← 路线 B：只按原子技能划分（跨任务通用）的首轮结果
+  ROUTE_A_LATENT_PCA.md      ← 整任务 VAE + PCA：任务在潜空间是闭环，进度=相位
+  ROUTE_B_ATOMIC_SKILLS.md   ← 路线 B（已否决）：跨任务原子技能的首轮结果
   G2_RESULT.md               ← 判决实验：子任务可分性（PASS）
   DECISIONS.md               ← 决策记录（含被推翻的旧说法与更正）
   CAP_LATENCY_NOTE.md        ← 外部大模型的延迟与成本取数
@@ -44,7 +45,8 @@ archive/
 - ✅ 前序实验核对完成：真实基线是 **9.56%**（36 任务 × 25 布局 = 900 局），而非早期小规模试验的 64–84%
 - ⚠️ 未经闭环验证；拒识（判对/判错）机制目前失效
 - 🔒 路线 A 已冻结在 `archive/`，后续新路线另建目录
-- 🧪 路线 B 首轮（跨任务原子技能）：同任务 49.7%（12 类）、**跨任务仅 18.0%**；诊断显示 N=32 会让簇退化成任务专属
+- ❌ **路线 B（跨任务原子技能）已否决**：同任务 49.7%（12 类）、跨任务仅 **18.0%**；诊断显示 N=32 会让簇退化成任务专属动作。保留记录于 `docs/ROUTE_B_ATOMIC_SKILLS.md`
+- 📈 路线 A 潜空间可视化：任务执行是**闭环**、子任务是环上弧段，**进度=相位**（角度与时间 ρ=−0.997）
 
 **先读**：[`docs/PLAN_CN.md`](docs/PLAN_CN.md) → [`docs/PRIOR_RESULTS_20261124.md`](docs/PRIOR_RESULTS_20261124.md) → [`docs/PILOT_STORE_LAPTOP.md`](docs/PILOT_STORE_LAPTOP.md)
 

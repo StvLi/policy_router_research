@@ -1,6 +1,8 @@
 # 路线 B：只按原子技能划分（跨任务通用）— 首轮结果
 
-> 分支 `route-b-atomic-skills` ｜ 脚本 `scripts/routeB_atomic_skills.py` ｜ 日期 2026-11-24
+> **状态：已否决（2026-11-24，用户判断）—— 保留作为负面结果记录，不再推进。**
+> 脚本 `scripts/routeB_atomic_skills.py` 保留可复跑；结论见 §3。
+> 分支 `route-b-atomic-skills` 已合入 main 并删除。
 > 与已冻结的路线 A 对照：`archive/route-A-vae3tile-state-k0/`
 
 ---
