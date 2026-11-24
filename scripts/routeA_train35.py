@@ -155,6 +155,8 @@ def main():
     ap.add_argument("--beta", type=float, default=1.0)
     ap.add_argument("--min-frames", type=int, default=200)
     ap.add_argument("--out", default="")
+    ap.add_argument("--only", default="",
+                    help="只看这些任务（逗号分隔的子串，不区分大小写）；空=全部 35 个")
     a = ap.parse_args()
     a.out = a.out or f"/tmp/routeA35_w{a.worker}.jsonl"
 
@@ -168,6 +170,11 @@ def main():
     tasks = task_episodes(a.dataset)
     names = sorted(tasks)
     mine = [t for i, t in enumerate(names) if i % a.workers == a.worker]
+    if a.only:
+        keys = [k.strip().lower() for k in a.only.split(",") if k.strip()]
+        pool = [t for t in names if any(k in t.lower() for k in keys)]
+        mine = [t for i, t in enumerate(pool) if i % a.workers == a.worker]
+        print(f"[w{a.worker}] --only 选中 {len(pool)} 个任务，本片 {len(mine)} 个", flush=True)
     print(f"[w{a.worker}] 共 {len(names)} 任务，本片 {len(mine)} 个；GPU={dev}", flush=True)
 
     with open(a.out, "w") as f:
