@@ -1,0 +1,31 @@
+{
+  "explained_variance": [
+    0.1649966835975647,
+    0.1267482042312622,
+    0.10373806208372116
+  ],
+  "k": 5,
+  "separability": {
+    "PC1-3": {
+      "softmax_train": 0.7753378378378378,
+      "softmax_test": 0.7487969201154957,
+      "centroid": 0.6029836381135707
+    },
+    "full-16": {
+      "softmax_train": 0.9239864864864865,
+      "softmax_test": 0.9196342637151107,
+      "centroid": 0.8282001924927815
+    }
+  },
+  "phase": {
+    "spearman_median": -0.9968833208832171,
+    "frac_abs_gt07": 0.92,
+    "turns_median": 1.8004352849216747
+  },
+  "spearman_pc1_time": {
+    "median": -0.23095233292516298,
+    "frac_abs_gt05": 0.06,
+    "frac_pos": 0.0,
+    "frac_neg": 0.06
+  }
+}
