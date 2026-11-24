@@ -9,3 +9,8 @@ venv/
 pilot_frames_*.npz
 pilot_ood*_s*_k*.npz
 *.log
+
+# 单集原始三视角视频（体积大；合成版与抽帧图入库即可）
+docs/assets/videos/*/main.mp4
+docs/assets/videos/*/left_wrist.mp4
+docs/assets/videos/*/right_wrist.mp4
