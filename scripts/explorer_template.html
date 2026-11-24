@@ -45,6 +45,15 @@
             border-radius:6px; padding:8px 10px; font-size:10.5px; color:#8b95a8; }
   #legend .bar { height:8px; border-radius:2px; margin:3px 0 2px; }
   .hint { position:absolute; left:12px; bottom:12px; color:#4e5766; font-size:11px; }
+  #vidB { position:absolute; right:12px; top:46px; width:344px; background:#11141bee;
+          border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
+  #vidB.on { display:block; }
+  #vidB video { width:100%; border-radius:4px; display:block; background:#000; }
+  #vheadB { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vheadB b { color:#d8dee9; font-weight:600; }
+  #vcapB { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
+  #vseekB { width:100%; margin:6px 0 2px; accent-color:#c9d3e3; height:14px; }
+  #vtimeB { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
   #vid { position:absolute; left:12px; top:46px; width:344px; background:#11141bee;
          border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
   #vid.on { display:block; }
@@ -84,6 +93,11 @@
       <div class="lbl">轨迹</div>
       <select id="epsel"><option value="-1">（不显示轨迹）</option></select>
       <label class="row" style="margin-top:6px"><input type="checkbox" id="dim"> 淡化其它点</label>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">评测 rollout（右）</div>
+      <select id="evsel"><option value="-1">（不播放）</option></select>
     </div>
 
     <div class="grp">
@@ -137,6 +151,13 @@
       <div id="vtime"></div>
       <div id="vcap"></div>
     </div>
+    <div id="vidB">
+      <div id="vheadB"><b id="vtitleB">—</b><button id="vbtnB">暂停</button></div>
+      <video id="vB" muted loop playsinline preload="auto"></video>
+      <input type="range" id="vseekB" min="0" max="100" step="0.1" value="0">
+      <div id="vtimeB"></div>
+      <div id="vcapB"></div>
+    </div>
     <div id="tip"></div>
     <div id="legend"></div>
     <div class="hint">拖动旋转 · 滚轮缩放 · 右键/Shift 拖动平移 · 双击重置</div>
@@ -179,7 +200,7 @@ const clsColor = {}; clsList.forEach((c,i)=> clsColor[c] = PAL[i % PAL.length]);
 const clsVisible = {}; clsList.forEach(c => clsVisible[c] = true);
 
 // ---------- 相机（两栏共享） ----------
-let yaw = -0.6, pitch = 0.5, zoom = 1, panX = 0, panY = 0, fov = 520;
+let yaw = 0, pitch = 0, zoom = 1, panX = 0, panY = 0, fov = 520;   // 默认沿 PC3 看 → PC1-PC2 平面，环最清楚
 let DPR = 1;
 let selEpIdx = -1;                 // 训练栏当前选中的 episode（-1 = 不显示轨迹）
 
@@ -405,11 +426,10 @@ function segAt(epi, t) {
   return segs.length ? segs[segs.length-1] : null;
 }
 
-function drawMarker() {
+function drawMarkerA() {
   if (selEpIdx < 0) return;
   const P = PA, ctx = P.ctx;
-  const v = document.getElementById('v');
-  const t = (v && v.readyState > 0) ? v.currentTime : 0;
+  const t = (VA.el.readyState > 0) ? VA.el.currentTime : 0;
   const i = sampleAtTime(selEpIdx, t);
   if (i < 0) return;
   const seg = segAt(selEpIdx, t);
@@ -424,27 +444,63 @@ function drawMarker() {
   }
   ctx.stroke();
 
-  const r = 7 * DPR;
+  dot(ctx, P.sx[i], P.sy[i], col, 7);
+  VA.sync();
+  if (seg) VA.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
+    + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+}
+
+function dot(ctx, x, y, col, r) {
+  r *= DPR;
   ctx.globalAlpha = 1;
-  ctx.beginPath(); ctx.arc(P.sx[i], P.sy[i], r, 0, 7);
-  ctx.fillStyle = col; ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = col; ctx.fill();
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * DPR; ctx.stroke();
-  ctx.beginPath(); ctx.arc(P.sx[i], P.sy[i], r * 2.2, 0, 7);
+  ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 7);
   ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6 * DPR; ctx.stroke();
   ctx.globalAlpha = 1;
+}
 
-  if (typeof syncSeek === 'function') syncSeek();
-  const cap = document.getElementById('vcap');
-  if (seg) {
-    cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
-      + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+function sampleAtTimeEv(ridx, t) {
+  const a0 = EVOFF[ridx], a1 = EVOFF[ridx + 1];
+  if (a1 <= a0) return -1;
+  let lo = a0, hi = a1 - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (EVT[mid] < t) lo = mid + 1; else hi = mid; }
+  let i = lo;
+  if (i > a0 && Math.abs(EVT[i-1] - t) < Math.abs(EVT[i] - t)) i--;
+  return i;
+}
+
+function drawMarkerB() {
+  if (selEvIdx < 0 || !NE) return;
+  const P = PB, ctx = P.ctx;
+  const t = (VB.el.readyState > 0) ? VB.el.currentTime : 0;
+  const i = sampleAtTimeEv(selEvIdx, t);
+  if (i < 0) return;
+  const ro = (META.ev_rollouts || [])[selEvIdx] || {};
+  const col = '#ffb648';                       // 白点云上用它才看得见
+
+  // 已走过的路径加亮
+  const a0 = EVOFF[selEvIdx];
+  ctx.strokeStyle = '#ffb648'; ctx.globalAlpha = 0.85; ctx.lineWidth = 2.4 * DPR;
+  ctx.beginPath();
+  let started = false;
+  for (let j = a0; j <= i; j++) {
+    if (!started) { ctx.moveTo(P.sx[j], P.sy[j]); started = true; } else ctx.lineTo(P.sx[j], P.sy[j]);
   }
+  ctx.stroke();
+
+  dot(ctx, P.sx[i], P.sy[i], col, 7);
+  VB.sync();
+  const tag = `#${selEvIdx} ${ro.cfg || '?'} · layout ${ro.layout || '?'} · ${ro.ok ? '成功' : '失败'}`;
+  VB.cap.innerHTML = `<span class="chip" style="background:#ffb648"></span>${tag}<br>`
+    + `t=${t.toFixed(2)}s　已投影 ${i - a0 + 1}/${a0 >= 0 ? EVOFF[selEvIdx+1] - a0 : 0} 帧`;
 }
 
 function drawDynamic() {
   PA.ctx.drawImage(PA.bgCv, 0, 0);
   PB.ctx.drawImage(PB.bgCv, 0, 0);
-  drawMarker();
+  drawMarkerA();
+  drawMarkerB();
 }
 
 function draw() { drawStaticA(); drawStaticB(); drawDynamic(); }
@@ -489,7 +545,7 @@ window.addEventListener('mouseup', () => {
 });
 
 const PRESETS = { iso: [-0.6, 0.5], p12: [0, 0], p23: [-Math.PI/2, 0], p13: [0, 1.45] };
-function resetView() { [yaw, pitch] = PRESETS.iso; zoom = 1; panX = 0; panY = 0; draw(); }
+function resetView() { [yaw, pitch] = PRESETS.p12; zoom = 1; panX = 0; panY = 0; draw(); }
 document.getElementById('reset').onclick = resetView;
 document.querySelectorAll('[data-preset]').forEach(b => {
   b.onclick = () => { [yaw, pitch] = PRESETS[b.dataset.preset]; draw(); };
@@ -569,54 +625,61 @@ META.ep_names.forEach((name, i) => {
 });
 epSel.onchange = () => { selEpIdx = parseInt(epSel.value, 10); setVideo(selEpIdx); draw(); };
 
-const vEl = document.getElementById('v');
-const vBox = document.getElementById('vid');
-const vBtn = document.getElementById('vbtn');
-const vSeek = document.getElementById('vseek');
-const vTime = document.getElementById('vtime');
-
-function setVideo(epi) {
-  if (epi < 0) {
-    vEl.pause(); vEl.innerHTML = ''; vEl.load();
-    vBox.classList.remove('on'); stopLoop(); return;
-  }
-  const name = META.ep_names[epi];
-  vEl.innerHTML = '';
-  for (const [dir, ext, type] of [[META.videoDir, 'mp4', 'video/mp4'],
-                                  [META.videoDir + '_webm', 'webm', 'video/webm']]) {
-    const s = document.createElement('source');
-    s.src = `${dir}/${name}.${ext}`; s.type = type;
-    vEl.appendChild(s);
-  }
-  vEl.load();
-  document.getElementById('vtitle').textContent = name;
-  vBox.classList.add('on');
-  const p = vEl.play();
-  if (p && p.catch) p.catch(() => { vBtn.textContent = '播放'; });
+function mkVideo(p) {
+  const o = {
+    box: document.getElementById(p.box), btn: document.getElementById(p.btn),
+    el: document.getElementById(p.video), seek: document.getElementById(p.seek),
+    time: document.getElementById(p.time), cap: document.getElementById(p.cap),
+    title: document.getElementById(p.title), seeking: false, dir: p.dir, ext: p.ext || 'mp4',
+  };
+  o.btn.onclick = () => { if (o.el.paused) o.el.play(); else o.el.pause(); };
+  o.seek.addEventListener('pointerdown', () => { o.seeking = true; });
+  o.seek.addEventListener('pointerup',   () => { o.seeking = false; });
+  o.seek.addEventListener('input', () => {
+    const d = o.el.duration || 0;
+    if (d > 0) { o.el.currentTime = (o.seek.value / 1000) * d; drawDynamic(); }
+  });
+  o.sync = () => {
+    const d = o.el.duration || 0;
+    if (d > 0 && !o.seeking) o.seek.value = (o.el.currentTime / d) * 1000;
+    o.time.innerHTML = `<span>${o.el.currentTime.toFixed(2)}s</span><span>${(d||0).toFixed(2)}s</span>`;
+  };
+  o.load = (name) => {
+    if (!name) { o.el.pause(); o.el.removeAttribute('src'); o.el.load();
+                 o.box.classList.remove('on'); return; }
+    o.name = name; o.triedWebm = false;
+    o.el.src = `${o.dir}/${name}.mp4`;        // 主用 mp4（H.264）
+    o.el.load();
+    o.title.textContent = name;
+    o.box.classList.add('on');
+    const pr = o.el.play();
+    if (pr && pr.catch) pr.catch(() => { o.btn.textContent = '播放'; });
+  };
+  o.el.addEventListener('timeupdate', o.sync);
+  o.el.addEventListener('loadedmetadata', o.sync);
+  o.el.addEventListener('seeked', () => { o.sync(); drawDynamic(); });
+  o.el.addEventListener('play',  () => { o.btn.textContent = '暂停'; startLoop(); });
+  o.el.addEventListener('pause', () => { o.btn.textContent = '播放'; stopLoop(); });
+  o.el.addEventListener('error', () => {
+    if (o.name && !o.triedWebm) {              // mp4 不行就试 webm（VP9）
+      o.triedWebm = true;
+      o.el.src = `${o.dir}_webm/${o.name}.webm`;
+      o.el.load(); o.el.play().catch(() => {});
+      return;
+    }
+    o.cap.innerHTML = `<span style="color:#e17055">找不到视频：${o.dir}/${o.name}.mp4</span>`;
+  });
+  return o;
 }
-vBtn.onclick = () => { if (vEl.paused) vEl.play(); else vEl.pause(); };
+const VA = mkVideo({box:'vid', title:'vtitle', video:'v', btn:'vbtn',
+                    seek:'vseek', time:'vtime', cap:'vcap', dir: META.videoDir});
+const VB = mkVideo({box:'vidB', title:'vtitleB', video:'vB', btn:'vbtnB',
+                    seek:'vseekB', time:'vtimeB', cap:'vcapB', dir: META.ev_videoDir});
 
-let seeking = false;
-vSeek.addEventListener('pointerdown', () => { seeking = true; });
-vSeek.addEventListener('pointerup',   () => { seeking = false; });
-vSeek.addEventListener('input', () => {
-  const d = vEl.duration || 0;
-  if (d > 0) { vEl.currentTime = (vSeek.value / 1000) * d; drawDynamic(); }
-});
-function syncSeek() {
-  const d = vEl.duration || 0;
-  if (d > 0 && !seeking) vSeek.value = (vEl.currentTime / d) * 1000;
-  vTime.innerHTML = `<span>${vEl.currentTime.toFixed(2)}s</span><span>${(d||0).toFixed(2)}s</span>`;
-}
-vEl.addEventListener('timeupdate', syncSeek);
-vEl.addEventListener('loadedmetadata', syncSeek);
-vEl.addEventListener('seeked', () => { syncSeek(); drawDynamic(); });
-vEl.addEventListener('play',  () => { vBtn.textContent = '暂停'; startLoop(); });
-vEl.addEventListener('pause', () => { vBtn.textContent = '播放'; stopLoop(); });
-vEl.addEventListener('error', () => {
-  document.getElementById('vcap').innerHTML =
-    `<span style="color:#e17055">找不到视频：${META.videoDir}/${META.ep_names[selEpIdx]}.mp4</span>`;
-});
+let selEvIdx = -1;
+
+// 通过"训练集的 episode 序号"装载左栏视频
+function setVideo(epi) { VA.load(epi < 0 ? '' : META.ep_names[epi]); }
 
 document.getElementById('dim').onchange = () => draw();
 document.getElementById('psize').oninput = () => draw();
@@ -626,6 +689,19 @@ document.getElementById('cmode').onchange = e => {
   document.getElementById('clsbox').style.display = (cmode === 'cls') ? '' : 'none';
   updateLegend(); draw();
 };
+const evSel = document.getElementById('evsel');
+(META.ev_rollouts || []).forEach((r, i) => {
+  const o = document.createElement('option');
+  o.value = i;
+  o.textContent = `#${i} ${r.cfg} · layout ${r.layout} · ${r.ok ? '成功' : '失败'} (${r.n} 帧)`;
+  evSel.appendChild(o);
+});
+evSel.onchange = () => {
+  selEvIdx = parseInt(evSel.value, 10);
+  VB.load(selEvIdx < 0 ? '' : (META.ev_rollouts[selEvIdx] || {}).file);
+  draw();
+};
+
 ['evShow', 'evLines', 'evOkOnly'].forEach(id => {
   document.getElementById(id).onchange = () => draw();
 });
