@@ -32,10 +32,16 @@ def main():
     ap.add_argument("--latent", default="/tmp/routeA_task_latent.npz")
     ap.add_argument("--out", default="docs/assets/latent_explorer.html")
     ap.add_argument("--title", default="收纳耳机与笔记本电脑 · 整任务 VAE 潜空间（PCA 3 维）")
+    ap.add_argument("--spec", default="/tmp/pilot_spec_local.json",
+                    help="路线 A 的 spec（含每集分段 caption），用于视频面板显示当前段")
+    ap.add_argument("--videos", default="videos/head",
+                    help="相对 HTML 的 head 视频目录名")
     a = ap.parse_args()
 
     z = np.load(a.latent, allow_pickle=True)
     MU, Y, EP, FIDX, SCORE = z["mu"], z["y"], z["ep"], z["fidx"], z["score"]
+    caps = [c.decode() if isinstance(c, bytes) else c for c in z["caps"]]
+    cap_labels = z["cap_labels"]
     Z3, ev = pca3(MU)
     N = len(Z3)
 
@@ -54,8 +60,27 @@ def main():
     center = np.median(Z3[:, :2], axis=0)
     ang = np.arctan2(Z3[:, 1] - center[1], Z3[:, 0] - center[0])
 
+    # 每集的分段标注（时间 + caption + 类别），供视频面板显示"当前在做什么"
+    segs_by_ep = {}
+    if os.path.exists(a.spec):
+        spec = json.load(open(a.spec))
+        cap2cls = {c: int(l) for c, l in zip(caps, cap_labels)}
+        for i, e in enumerate(eps):
+            raw = spec["segs"].get(str(int(e))) or []
+            out = []
+            for s in raw:
+                cap = s["caption"]
+                out.append([round(float(s["start_s"]), 2), round(float(s["end_s"]), 2),
+                            cap, cap2cls.get(cap.lower(), -1)])
+            segs_by_ep[str(i)] = out
+        print(f"嵌入分段标注：{len(segs_by_ep)} 集")
+    else:
+        print("⚠️ 未找到 spec，视频面板将不显示 caption")
+
     meta = dict(
         title=a.title,
+        videoDir=a.videos,
+        segs=segs_by_ep,
         n=int(N), n_ep=int(len(eps)),
         ep_names=[f"ep{int(e):06d}" for e in eps],
         pc_var=[round(float(v) * 100, 2) for v in ev],
@@ -123,6 +148,15 @@ TEMPLATE = r"""<!DOCTYPE html>
             border-radius:6px; padding:8px 10px; font-size:10.5px; color:#8b95a8; }
   #legend .bar { height:8px; border-radius:2px; margin:3px 0 2px; }
   .hint { position:absolute; left:12px; bottom:12px; color:#4e5766; font-size:11px; }
+  #vid { position:absolute; left:12px; top:12px; width:344px; background:#11141bee;
+         border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
+  #vid.on { display:block; }
+  #vid video { width:100%; border-radius:4px; display:block; background:#000; }
+  #vhead { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vhead b { color:#d8dee9; font-weight:600; }
+  #vcap { margin-top:6px; font-size:11px; line-height:1.4; color:#b9c2d2; }
+  #vcap .chip { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
+  #vbtn { margin-left:auto; width:auto; padding:2px 8px; font-size:11px; }
 </style>
 </head>
 <body>
@@ -182,6 +216,11 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   <div id="stage">
     <canvas id="cv"></canvas>
+    <div id="vid">
+      <div id="vhead"><b id="vtitle">—</b><button id="vbtn">暂停</button></div>
+      <video id="v" muted loop playsinline preload="auto"></video>
+      <div id="vcap"></div>
+    </div>
     <div id="tip"></div>
     <div id="legend"></div>
     <div class="hint">拖动旋转 · 滚轮缩放 · 右键/Shift 拖动平移 · 双击重置</div>
@@ -273,17 +312,24 @@ function colorOf(i) {
   window.__slo = p[Math.floor(0.02*p.length)]; window.__shi = p[Math.floor(0.98*p.length)];
 }
 
-// ---------- 主绘制 ----------
-function draw() {
-  const cy = Math.cos(yaw), sy_ = Math.sin(yaw);
+// ---------- 主绘制：静态层（点云/轴/轨迹）缓存 + 动态层（视频游标） ----------
+const bgCv = document.createElement('canvas');
+const bg = bgCv.getContext('2d');
+let selEpIdx = -1;
+
+function updateCam() {
+  const cyw = Math.cos(yaw), syw = Math.sin(yaw);
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
   const scale0 = Math.min(W, H) * 0.42 * zoom / ext;
-  const cx = W / 2 + panX * DPR, cyy = H / 2 + panY * DPR;
+  return { cyw, syw, cp, sp, scale0, cx: W/2 + panX*DPR, cyy: H/2 + panY*DPR };
+}
 
+function projectAll(cam) {
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
   for (let i = 0; i < N; i++) {
     const x = PC[3*i], y = PC[3*i+1], z = PC[3*i+2];
-    const x1 = cy * x + sy_ * z;
-    const z1 = -sy_ * x + cy * z;
+    const x1 = cyw * x + syw * z;
+    const z1 = -syw * x + cyw * z;
     const y2 = cp * y - sp * z1;
     const z2 = sp * y + cp * z1;
     zrot[i] = z2;
@@ -292,70 +338,144 @@ function draw() {
     sy[i] = cyy - y2 * scale0 * f;
     ssz[i] = f;
   }
-  orderBuf = new Int32Array(N);
-  for (let i = 0; i < N; i++) orderBuf[i] = i;
-  const ord = Array.prototype.slice.call(orderBuf).sort((a, b) => zrot[a] - zrot[b]);
+}
 
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#0b0d12'; ctx.fillRect(0, 0, W, H);
+function drawStatic() {
+  bgCv.width = W; bgCv.height = H;
+  const cam = updateCam();
+  projectAll(cam);
+  const ord = new Array(N);
+  for (let i = 0; i < N; i++) ord[i] = i;
+  ord.sort((a, b) => zrot[a] - zrot[b]);
 
-  // 坐标轴
-  const o = project(0, 0, 0, cy, sy_, cp, sp, scale0, cx, cyy);
-  drawAxis(o, project(ext, 0, 0, cy, sy_, cp, sp, scale0, cx, cyy), '#c0392b', `PC1 ${META.pc_var[0]}%`);
-  drawAxis(o, project(0, ext, 0, cy, sy_, cp, sp, scale0, cx, cyy), '#27ae60', `PC2 ${META.pc_var[1]}%`);
-  drawAxis(o, project(0, 0, ext, cy, sy_, cp, sp, scale0, cx, cyy), '#2980b9', `PC3 ${META.pc_var[2]}%`);
+  bg.clearRect(0, 0, W, H);
+  bg.fillStyle = '#0b0d12'; bg.fillRect(0, 0, W, H);
 
-  // 点云
+  const o = project(0,0,0, cam);
+  drawAxis(bg, o, project(ext,0,0, cam), '#c0392b', `PC1 ${META.pc_var[0]}%`);
+  drawAxis(bg, o, project(0,ext,0, cam), '#27ae60', `PC2 ${META.pc_var[1]}%`);
+  drawAxis(bg, o, project(0,0,ext, cam), '#2980b9', `PC3 ${META.pc_var[2]}%`);
+
   const base = parseFloat(document.getElementById('psize').value);
   const dimOn = document.getElementById('dim').checked;
-  const selEp = parseInt(document.getElementById('epsel').value, 10);
   let shown = 0;
   for (let k = 0; k < N; k++) {
     const i = ord[k];
     if (cmode === 'cls' && !clsVisible[CLS[i]]) continue;
-    if (dimOn && selEp >= 0 && EPI[i] !== selEp) continue;
+    if (dimOn && selEpIdx >= 0 && EPI[i] !== selEpIdx) continue;
     const s = base * ssz[i] * DPR;
-    ctx.fillStyle = colorOf(i);
-    ctx.globalAlpha = 0.55;
-    ctx.fillRect(sx[i] - s/2, sy[i] - s/2, s, s);
+    bg.fillStyle = colorOf(i);
+    bg.globalAlpha = 0.55;
+    bg.fillRect(sx[i] - s/2, sy[i] - s/2, s, s);
     shown++;
   }
-  ctx.globalAlpha = 1;
+  bg.globalAlpha = 1;
 
-  // 轨迹
-  if (selEp >= 0) {
-    const a0 = OFF[selEp], a1 = OFF[selEp + 1];
-    ctx.lineWidth = 1.8 * DPR; ctx.lineCap = 'round';
+  if (selEpIdx >= 0) {
+    const a0 = OFF[selEpIdx], a1 = OFF[selEpIdx + 1];
+    bg.lineWidth = 1.8 * DPR; bg.lineCap = 'round';
     for (let i = a0; i + 1 < a1; i++) {
       const t = (TT[i] - TT[a0]) / Math.max(1e-6, TT[a1-1] - TT[a0]);
-      ctx.strokeStyle = ramp(t, CMAP_T);
-      ctx.globalAlpha = 0.95;
-      ctx.beginPath(); ctx.moveTo(sx[i], sy[i]); ctx.lineTo(sx[i+1], sy[i+1]); ctx.stroke();
+      bg.strokeStyle = ramp(t, CMAP_T);
+      bg.globalAlpha = 0.95;
+      bg.beginPath(); bg.moveTo(sx[i], sy[i]); bg.lineTo(sx[i+1], sy[i+1]); bg.stroke();
     }
-    // 起终点
     const s0 = Math.max(2.6, base) * DPR * 1.6;
-    ctx.globalAlpha = 1;
-    ctx.beginPath(); ctx.arc(sx[a0], sy[a0], s0, 0, 7); ctx.fillStyle = '#2ecc71'; ctx.fill();
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 1.2*DPR; ctx.stroke();
-    ctx.beginPath(); ctx.arc(sx[a1-1], sy[a1-1], s0, 0, 7); ctx.fillStyle = '#e74c3c'; ctx.fill(); ctx.stroke();
+    bg.globalAlpha = 1;
+    bg.beginPath(); bg.arc(sx[a0], sy[a0], s0, 0, 7); bg.fillStyle = '#2ecc71'; bg.fill();
+    bg.strokeStyle = '#000'; bg.lineWidth = 1.2*DPR; bg.stroke();
+    bg.beginPath(); bg.arc(sx[a1-1], sy[a1-1], s0, 0, 7); bg.fillStyle = '#e74c3c'; bg.fill(); bg.stroke();
   }
   document.getElementById('k_shown').textContent = shown.toLocaleString();
 }
 
-function project(x, y, z, cy, sy_, cp, sp, scale0, cx, cyy) {
-  const x1 = cy * x + sy_ * z;
-  const z1 = -sy_ * x + cy * z;
+// 当前视频时间 -> 该集里最近的那一帧样本
+function sampleAtTime(epi, t) {
+  const a0 = OFF[epi], a1 = OFF[epi+1];
+  if (a1 <= a0) return -1;
+  let lo = a0, hi = a1 - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (TT[mid] < t) lo = mid + 1; else hi = mid; }
+  let i = lo;
+  if (i > a0 && Math.abs(TT[i-1] - t) < Math.abs(TT[i] - t)) i--;
+  return i;
+}
+
+function segAt(epi, t) {
+  const segs = (META.segs && META.segs[String(epi)]) || [];
+  for (const s of segs) if (t >= s[0] && t < s[1]) return s;
+  return segs.length ? segs[segs.length-1] : null;
+}
+
+function drawMarker() {
+  if (selEpIdx < 0) return;
+  const v = document.getElementById('v');
+  const t = (v && v.readyState > 0) ? v.currentTime : 0;
+  const i = sampleAtTime(selEpIdx, t);
+  if (i < 0) return;
+  const seg = segAt(selEpIdx, t);
+  const col = (seg && seg[3] >= 0) ? clsColor[seg[3]] : '#ffffff';
+
+  // 过去 1 秒的尾迹
+  const a0 = OFF[selEpIdx];
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.9; ctx.lineWidth = 2.6 * DPR;
+  ctx.beginPath();
+  let started = false;
+  for (let j = i; j >= a0 && TT[i] - TT[j] <= 1.2; j--) {
+    if (!started) { ctx.moveTo(sx[j], sy[j]); started = true; } else ctx.lineTo(sx[j], sy[j]);
+  }
+  ctx.stroke();
+
+  // 游标
+  const r = 7 * DPR;
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(sx[i], sy[i], r, 0, 7);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * DPR; ctx.stroke();
+  ctx.beginPath(); ctx.arc(sx[i], sy[i], r * 2.2, 0, 7);
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6 * DPR; ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // 文本：当前段 caption
+  const cap = document.getElementById('vcap');
+  if (seg) {
+    cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
+      + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+  }
+}
+
+function drawDynamic() {
+  ctx.drawImage(bgCv, 0, 0);
+  drawMarker();
+}
+
+function draw() { drawStatic(); drawDynamic(); }
+
+let playReq = null;
+function startLoop() {
+  if (playReq) return;
+  const step = () => { drawDynamic(); playReq = requestAnimationFrame(step); };
+  playReq = requestAnimationFrame(step);
+}
+function stopLoop() {
+  if (playReq) { cancelAnimationFrame(playReq); playReq = null; }
+  drawDynamic();
+}
+
+function project(x, y, z, cam) {
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
+  const x1 = cyw * x + syw * z;
+  const z1 = -syw * x + cyw * z;
   const y2 = cp * y - sp * z1;
   const z2 = sp * y + cp * z1;
   const f = fov / (fov + z2 * ext * 1.2);
   return [cx + x1 * scale0 * f, cyy - y2 * scale0 * f];
 }
-function drawAxis(o, p, col, label) {
-  ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.2 * DPR;
-  ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
-  ctx.globalAlpha = 0.85; ctx.fillStyle = col; ctx.font = `${11*DPR}px sans-serif`;
-  ctx.fillText(label, p[0] + 4*DPR, p[1] - 4*DPR);
-  ctx.globalAlpha = 1;
+function drawAxis(g, o, p, col, label) {
+  g.strokeStyle = col; g.globalAlpha = 0.5; g.lineWidth = 1.2 * DPR;
+  g.beginPath(); g.moveTo(o[0], o[1]); g.lineTo(p[0], p[1]); g.stroke();
+  g.globalAlpha = 0.85; g.fillStyle = col; g.font = `${11*DPR}px sans-serif`;
+  g.fillText(label, p[0] + 4*DPR, p[1] - 4*DPR);
+  g.globalAlpha = 1;
 }
 
 // ---------- 交互 ----------
@@ -447,7 +567,39 @@ META.ep_names.forEach((name, i) => {
   o.value = i; o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)`;
   epSel.appendChild(o);
 });
-epSel.onchange = () => draw();
+epSel.onchange = () => { selEpIdx = parseInt(epSel.value, 10); setVideo(selEpIdx); draw(); };
+
+const vEl = document.getElementById('v');
+const vBox = document.getElementById('vid');
+const vBtn = document.getElementById('vbtn');
+
+function setVideo(epi) {
+  if (epi < 0) {
+    vEl.pause(); vEl.innerHTML = ''; vEl.load();
+    vBox.classList.remove('on'); stopLoop(); return;
+  }
+  const name = META.ep_names[epi];
+  vEl.innerHTML = '';
+  for (const [dir, ext, type] of [[META.videoDir, 'mp4', 'video/mp4'],
+                                  [META.videoDir + '_webm', 'webm', 'video/webm']]) {
+    const s = document.createElement('source');
+    s.src = `${dir}/${name}.${ext}`; s.type = type;
+    vEl.appendChild(s);
+  }
+  vEl.load();
+  document.getElementById('vtitle').textContent = name;
+  vBox.classList.add('on');
+  const p = vEl.play();
+  if (p && p.catch) p.catch(() => { vBtn.textContent = '播放'; });
+}
+vBtn.onclick = () => { if (vEl.paused) { vEl.play(); } else { vEl.pause(); } };
+vEl.addEventListener('play',  () => { vBtn.textContent = '暂停'; startLoop(); });
+vEl.addEventListener('pause', () => { vBtn.textContent = '播放'; stopLoop(); });
+vEl.addEventListener('seeked', () => { drawDynamic(); });
+vEl.addEventListener('error', () => {
+  document.getElementById('vcap').innerHTML =
+    `<span style="color:#e17055">找不到视频：${META.videoDir}/${META.ep_names[selEpIdx]}.mp4</span>`;
+});
 document.getElementById('dim').onchange = () => draw();
 document.getElementById('psize').oninput = () => draw();
 document.getElementById('fov').oninput = e => { fov = parseFloat(e.target.value); draw(); };

@@ -95,6 +95,8 @@ PC1–PC2 平面上点云排成一个明显的环（不是一个钟形/线形分
 | **视角预设** | 等轴测 / 看 PC1-PC2 / 看 PC2-PC3 / 看 PC1-PC3 —— 快速建立"这是一条闭合环"的立体感 |
 | **自动旋转** | 缓慢绕轴旋转，便于看出环状结构 |
 | 悬停 | 显示该点的 episode、时间、类别、相位角、不典型度 |
+| **head 视频循环播放** | 选中某条 episode 后，左上角出现该集的头部相机视频（320×240，12 fps），**自动循环播放** |
+| **视频 ↔ 轨迹同步** | 播放时，3D 轨迹上有一个游标跟着移动；视频下方实时显示当前所在段落的 caption 与类别色块 |
 
 比静态图多出来的两件事：
 
@@ -108,7 +110,21 @@ python3 scripts/make_latent_explorer.py --latent /tmp/routeA_task_latent.npz \
         --out docs/assets/latent_explorer.html
 ```
 
-> 纯 Canvas 2D + 手写投影与深度排序，10,366 个点按需重绘（无动画循环，静止时不占 CPU）。
+> 纯 Canvas 2D + 手写投影与深度排序。**静态层（点云/轴/轨迹）在视图变化时渲染到离屏画布并缓存**；
+> 播放视频时每帧只做一次 `drawImage` + 画游标，所以 10,366 个点也能流畅播。
+
+### 7.1 视频从哪来
+
+`docs/assets/videos/head/epXXXXXX.mp4`：把 6c 上的头部相机视频降采样（320×240、12 fps、crf 33）后随仓库分发，100 集共约 **8 MB**。
+`docs/assets/videos/head_webm/` 是同一批视频的 VP9 版（浏览器不支持 H.264 时自动兜底），体积较大，**未入库**，需要时本地生成：
+
+```bash
+for f in docs/assets/videos/head/*.mp4; do
+  ep=$(basename "$f" .mp4)
+  ffmpeg -y -v error -i "$f" -c:v libvpx-vp9 -b:v 0 -crf 40 -row-mt 1 -an \
+         "docs/assets/videos/head_webm/$ep.webm"
+done
+```
 
 ---
 

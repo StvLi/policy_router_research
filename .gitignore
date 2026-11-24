@@ -14,3 +14,5 @@ pilot_ood*_s*_k*.npz
 docs/assets/videos/*/main.mp4
 docs/assets/videos/*/left_wrist.mp4
 docs/assets/videos/*/right_wrist.mp4
+# WebM 兜底副本（浏览器若不支持 H.264 时用；体积较大，不入库）
+docs/assets/videos/head_webm/
