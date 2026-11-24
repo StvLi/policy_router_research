@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+.venv/
+venv/
+
+# 实验中间产物（可再生成，不入库）
+pilot_frames_*.npz
+pilot_ood*_s*_k*.npz
+*.log

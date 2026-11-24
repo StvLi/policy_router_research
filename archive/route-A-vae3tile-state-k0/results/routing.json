@@ -1,0 +1,104 @@
+{
+  "task": "Task: Hang the headphones on the headphone stand, close the laptop, then place it into the vertical laptop stand.",
+  "n_episodes": 100,
+  "n_samples": 10366,
+  "k": 5,
+  "cluster_sizes": {
+    "4": 14,
+    "0": 39,
+    "2": 17,
+    "3": 3,
+    "1": 12
+  },
+  "cluster_examples": {
+    "0": [
+      "grasp the right side of the tablet with the right hand while holding the tablet with the left hand",
+      "hand over the tablet from the left hand to the right hand",
+      "hand over the tablet from the left hand to the right hand and place the tablet into the white stand on the right side of the table with the right hand"
+    ],
+    "1": [
+      "pick up the headphones from the center of the table with the left hand",
+      "pick up the headphones from the left side of the table with the left hand",
+      "pick up the headphones from the right side of the table with the right hand"
+    ],
+    "2": [
+      "hand over the headphones from the right hand to the left hand",
+      "hang the headphones on the hook of the stand on the left side of the table with the left hand",
+      "hang the headphones on the hook of the stand on the surface with the left hand"
+    ],
+    "3": [
+      "move both hands back to the original position.",
+      "move the right hand back to the original position",
+      "move the right hand back to the original position."
+    ],
+    "4": [
+      "close the laptop on the black stand on the brown surface with the right arm",
+      "close the laptop on the black stand on the brown surface with the right hand",
+      "close the laptop on the black stand on the table using the right hand"
+    ]
+  },
+  "params_per_vae": {
+    "0": 49413,
+    "1": 49413,
+    "2": 49413,
+    "4": 49413
+  },
+  "acc": 0.8941233608547838,
+  "balanced_acc": 0.7092245662348242,
+  "balanced_acc_modeled": 0.8865307077935303,
+  "per_class_recall": [
+    0.9855072463768116,
+    0.841726618705036,
+    0.8258928571428571,
+    0.0,
+    0.8929961089494164
+  ],
+  "modeled_classes": [
+    0,
+    1,
+    2,
+    4
+  ],
+  "coverage_at_p005": 0.9616318601262749,
+  "random": 0.2,
+  "confusion": [
+    [
+      612,
+      6,
+      0,
+      0,
+      3
+    ],
+    [
+      59,
+      585,
+      32,
+      0,
+      19
+    ],
+    [
+      0,
+      38,
+      185,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      3
+    ],
+    [
+      39,
+      2,
+      14,
+      0,
+      459
+    ]
+  ],
+  "stride": 5,
+  "iters": 1200,
+  "beta": 1.0
+}

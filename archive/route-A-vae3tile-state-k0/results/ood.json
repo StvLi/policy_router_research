@@ -1,0 +1,24 @@
+{
+  "task": "Task: Hang the headphones on the headphone stand, close the laptop, then place it into the vertical laptop stand.",
+  "auroc_subtask": 0.9986898553680956,
+  "auroc_task": 0.9995760055310517,
+  "tau_sub": 0.4145454545454546,
+  "tau_task": 0.01,
+  "ood_cap_rate": 0.9978715856686768,
+  "ood_false_accept": 0.002128414331323164,
+  "id_subtask_rate": 0.9907722195240408,
+  "id_task_rate": 0.0009713453132588635,
+  "id_cap_rate": 0.00825643516270034,
+  "n_id": 2059,
+  "n_ood": 2819,
+  "ood_tasks": [
+    "Place the mouse on the mouse pad, push the keyboard into the frame, put the figurine on the stand, place the alarm clock on the drawer, then open the drawer and put all remaining miscellaneous items inside.",
+    "Hang all the mugs on the mug rack.",
+    "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "Place the four eggs from the basket into the egg holder, then close the lid.",
+    "Fold the clothes neatly.",
+    "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+    "Play tic-tac-toe as the first player and fill the board with the opponent.",
+    "Pour all the balls from the cup into the vase."
+  ]
+}
