@@ -128,16 +128,22 @@ def stage_extract(a):
         ns = [int(c.get(cv2.CAP_PROP_FRAME_COUNT)) for c in caps]
         n = min(ns)
         triples, ts = [], []
+        # 顺序解码（grab 跳过中间帧）：逐帧 seek 在 640×480 H.264 上约 0.4 s/次，
+        # 一副 800 帧的片段按 stride 5 抽就要 3 分钟；顺序读只花几秒。
+        cur = 0
         for t in range(0, n, a.stride):
+            for c in caps:
+                for _ in range(t - cur):
+                    c.grab()
             frames = []
             ok_all = True
             for c in caps:
-                c.set(cv2.CAP_PROP_POS_FRAMES, t)
                 ok, fr_ = c.read()
                 if not ok:
                     ok_all = False
                     break
                 frames.append(cv2.cvtColor(fr_, cv2.COLOR_BGR2RGB))
+            cur = t + 1
             if not ok_all:
                 continue
             triples.append(tuple(frames))
@@ -147,8 +153,17 @@ def stage_extract(a):
         if not triples:
             print(f"  ep{ep}: 0 帧")
             continue
+        # 固定 batch（末批补同一帧再截断）：否则 JAX 会按不同批大小反复重编译，
+        # 实测可把抽取时间从 ~30 min 压到几分钟。
         for i in range(0, len(triples), a.batch):
-            FE.append(hidden_batch(triples[i:i + a.batch]))
+            chunk = triples[i:i + a.batch]
+            pad = a.batch - len(chunk)
+            if pad:
+                chunk = chunk + [chunk[-1]] * pad
+            h = hidden_batch(chunk)
+            if pad:
+                h = h[:len(chunk) - pad]
+            FE.append(h)
         EP += [ep] * len(triples)
         T += ts
         print(f"  ep{ep}: {len(triples)} 帧", flush=True)
