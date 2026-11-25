@@ -106,7 +106,7 @@ def main():
         sc = off.get(ro["layout"])
         ro["official"] = sc
         ro["ok"] = bool(sc is not None and sc >= 0.999)
-        ro["file"] = (f"episode_{ro['layout']:07d}_cam_head_"
+        ro["file"] = (f"episode_{ro['layout']:07d}_cam_{{cam}}_"
                       f"{'success' if ro['ok'] else 'fail'}")
 
     # 测试轨迹按 (rollout, t) 排好，供右栏逐帧投影
@@ -125,6 +125,7 @@ def main():
                     "<span style='color:#ff7a18'>橙星=OOD 触发帧</span>"),
         videoDir="videos/head",                       # 演示集头部视频（仓库内，100 集从 ep003100 起）
         ev_videoDir=a.eval25_videos,
+        ev_cams=["head", "left_wrist", "right_wrist"], train_cams=["head"],
         eval25VideoDir=a.eval25_videos,
         n=int(len(Ztr)), n_ep=int(len(offs) - 1),
         ep_names=[f"ep{int(ep):06d}" for ep in np.unique(EPd)],

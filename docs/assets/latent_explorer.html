@@ -39,6 +39,13 @@
   button:hover { background:#222838; }
   .kv { display:flex; justify-content:space-between; font-size:11px; color:#8b95a8; padding:1px 0; }
   .kv b { color:#cfd6e2; font-weight:600; font-variant-numeric:tabular-nums; }
+  .oodrow { display:flex; align-items:center; gap:6px; padding:2px 4px; cursor:pointer;
+            border-radius:3px; font-size:11px; color:#9aa5b8; }
+  .oodrow:hover { background:#161a24; }
+  .oodrow.on { background:#22272f; color:#e6ecf5; }
+  .oodrow .st { margin-left:auto; font-variant-numeric:tabular-nums; }
+  .oodrow .hit { color:#ff8a5c; }
+  .oodrow .miss { color:#6b7688; }
   #tip { position:absolute; pointer-events:none; background:#141922ee; border:1px solid #2a3142; border-radius:5px;
          padding:6px 8px; font-size:11px; line-height:1.45; display:none; white-space:nowrap; }
   #legend { position:absolute; right:12px; bottom:12px; background:#11141bdd; border:1px solid #202533;
@@ -60,6 +67,9 @@
   #vid video { width:100%; border-radius:4px; display:block; background:#000; }
   #vhead { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
   #vhead b { color:#d8dee9; font-weight:600; }
+  #vhead select, #vheadB select { width:auto; padding:1px 4px; font-size:10.5px; }
+  #vheadB select { margin-left:auto; }
+  #vhead select { margin-left:auto; }
   #vcap { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
   #vseek { width:100%; margin:6px 0 2px; accent-color:#4c9be8; height:14px; }
   #vtime { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
@@ -106,6 +116,11 @@
       <select id="evsel"><option value="-1">（不播放）</option></select>
     </div>
 
+    <div class="grp" id="oodbox" style="display:none">
+      <div class="lbl">OOD 检出情况</div>
+      <div id="oodlist"></div>
+    </div>
+
     <div class="grp">
       <div class="lbl">评测栏（右）</div>
       <label class="row"><input type="checkbox" id="evShow" checked> 显示评测点（白）</label>
@@ -150,14 +165,14 @@
       <canvas id="cv2"></canvas>
     </div>
     <div id="vid">
-      <div id="vhead"><b id="vtitle">—</b><button id="vbtn">暂停</button></div>
+      <div id="vhead"><b id="vtitle">—</b><select id="vcam" title="切换视角"></select><button id="vbtn">暂停</button></div>
       <video id="v" muted loop playsinline preload="auto"></video>
       <input type="range" id="vseek" min="0" max="1000" step="1" value="0">
       <div id="vtime"></div>
       <div id="vcap"></div>
     </div>
     <div id="vidB">
-      <div id="vheadB"><b id="vtitleB">—</b><button id="vbtnB">暂停</button></div>
+      <div id="vheadB"><b id="vtitleB">—</b><select id="vcamB" title="切换视角"></select><button id="vbtnB">暂停</button></div>
       <video id="vB" muted loop playsinline preload="auto"></video>
       <input type="range" id="vseekB" min="0" max="1000" step="1" value="0">
       <div id="vtimeB"></div>
@@ -597,13 +612,19 @@ function drawMarkerB() {
   const col = '#ffb648';
 
   const a0 = B.off[selEvIdx];
-  ctx.strokeStyle = col; ctx.globalAlpha = 0.85; ctx.lineWidth = 2.4 * DPR;
-  ctx.beginPath();
-  let started = false;
-  for (let j = a0; j <= i; j++) {
-    if (!started) { ctx.moveTo(B.sx[j], B.sy[j]); started = true; } else ctx.lineTo(B.sx[j], B.sy[j]);
+  const fPrev = batchFire(batchSel, selEvIdx);
+  const fIdxAbs = (fPrev && fPrev.idx >= 0) ? a0 + Math.min(fPrev.idx, B.off[selEvIdx+1] - a0 - 1) : -1;
+  for (let seg = 0; seg < 2; seg++) {           // 0 = 触发前（琥珀），1 = 触发后（红）
+    const lo = seg === 0 ? a0 : Math.max(a0, fIdxAbs);
+    const hi = seg === 0 ? Math.min(i, fIdxAbs >= 0 ? fIdxAbs : i) : i;
+    if (fIdxAbs < 0 && seg === 1) break;
+    if (hi < lo) continue;
+    ctx.strokeStyle = seg === 0 ? col : '#ff5a1f';
+    ctx.globalAlpha = 0.9; ctx.lineWidth = 2.4 * DPR;
+    ctx.beginPath();
+    for (let j = lo; j <= hi; j++) (j === lo ? ctx.moveTo(B.sx[j], B.sy[j]) : ctx.lineTo(B.sx[j], B.sy[j]));
+    ctx.stroke();
   }
-  ctx.stroke();
 
   const f0 = batchFire(batchSel, selEvIdx);
   const fired = f0 && f0.idx >= 0 && f0.t !== null && t >= f0.t;
@@ -802,9 +823,19 @@ function mkVideo(p) {
     if (d > 0 && !o.seeking) o.seek.value = (o.el.currentTime / d) * 1000;
     o.time.innerHTML = `<span>${o.el.currentTime.toFixed(2)}s</span><span>${(d||0).toFixed(2)}s</span>`;
   };
-  o.load = (name) => {
-    if (!name) { o.el.pause(); o.el.removeAttribute('src'); o.el.load();
-                 o.box.classList.remove('on'); return; }
+  o.setCam = (cam) => {
+    if (!cam || cam === o.cam) return;
+    o.cam = cam;
+    if (!o.pat) return;
+    const t = o.el.currentTime || 0;
+    o.load(o.pat);
+    o.el.addEventListener('loadedmetadata', () => { o.el.currentTime = t; }, { once: true });
+  };
+  o.load = (pat) => {
+    const name = pat ? String(pat).replace('{cam}', o.cam || 'head') : '';
+    if (!pat) { o.el.pause(); o.el.removeAttribute('src'); o.el.load();
+                o.box.classList.remove('on'); return; }
+    o.pat = pat;
     o.name = name; o.triedWebm = false;
     o.el.src = `${o.dir}/${name}.mp4`;        // 主用 mp4（H.264）
     o.el.load();
@@ -829,10 +860,22 @@ function mkVideo(p) {
   });
   return o;
 }
+const CAM_LABEL = {head:'头部', left_wrist:'左手', right_wrist:'右手'};
+function fillCams(sel, list, vid) {
+  if (!sel) return;
+  const useful = (list || []).filter(c => c);
+  sel.innerHTML = useful.map(c => `<option value="${c}">${CAM_LABEL[c] || c}</option>`).join('');
+  sel.style.display = useful.length > 1 ? '' : 'none';
+  sel.onchange = () => vid.setCam(sel.value);
+}
 const VA = mkVideo({box:'vid', title:'vtitle', video:'v', btn:'vbtn',
                     seek:'vseek', time:'vtime', cap:'vcap', dir: META.videoDir});
+VA.cam = (META.train_cams && META.train_cams[0]) || 'head';
+fillCams(document.getElementById('vcam'), META.train_cams || ['head'], VA);
 const VB = mkVideo({box:'vidB', title:'vtitleB', video:'vB', btn:'vbtnB',
                     seek:'vseekB', time:'vtimeB', cap:'vcapB', dir: META.ev_videoDir});
+VB.cam = 'head';
+fillCams(document.getElementById('vcamB'), META.ev_cams || ['head'], VB);
 
 let selEvIdx = -1;
 
@@ -899,6 +942,8 @@ batchSelEl.onchange = () => {
 
 evSel.onchange = () => {
   selEvIdx = parseInt(evSel.value, 10);
+  Array.from(document.querySelectorAll('#oodlist .oodrow'))
+       .forEach(c => c.classList.toggle('on', +c.dataset.idx === selEvIdx));
   const B = BATCHES[batchSel];
   VB.load(selEvIdx < 0 ? '' : (B.rollouts[selEvIdx] || {}).file);
   draw();
@@ -906,6 +951,39 @@ evSel.onchange = () => {
 
 fillRollouts(0);
 updatePaneTitle();
+{
+  const box = document.getElementById('oodbox');
+  const fire0 = (META.ev_fire || {})['0'];
+  if (box && fire0) {
+    box.style.display = '';
+    const list = document.getElementById('oodlist');
+    const rolls = BATCHES[0].rollouts || [];
+    let nHit = 0, nFail = 0;
+    rolls.forEach((r, i) => {
+      if (!r.ok) nFail++;
+      const f = fire0[String(i)];
+      const hit = !!(f && f.idx >= 0);
+      if (hit) nHit++;
+      const row = document.createElement('div');
+      row.className = 'oodrow';
+      row.dataset.idx = i;
+      row.innerHTML = `<span style="width:8px;height:8px;border-radius:2px;background:${hit ? '#ff7a18' : '#39404e'}"></span>`
+        + `<span>layout ${r.layout}</span><span style="color:${r.ok ? '#7fd1a8' : '#8b95a8'}">${r.ok ? '成功' : '失败'}</span>`
+        + `<span class="st ${hit ? 'hit' : 'miss'}">${hit ? '⚑ ' + f.t.toFixed(1) + 's' : '○ 未检出'}</span>`;
+      row.onclick = () => {
+        const s = document.getElementById('evsel');
+        s.value = String(i); s.onchange();
+        Array.from(list.children).forEach(c => c.classList.toggle('on', +c.dataset.idx === i));
+      };
+      list.appendChild(row);
+    });
+    const sum = document.createElement('div');
+    sum.className = 'kv';
+    sum.style.marginTop = '4px';
+    sum.innerHTML = `<span>失败 ${nFail} 局中检出</span><b>${nHit} / ${nFail}</b>`;
+    list.appendChild(sum);
+  }
+}
 if (META.autoplayFirstFire) {
   const f = (META.ev_fire || {})['0'] || {};
   const k = Object.keys(f).find(j => f[j] && f[j].idx >= 0);
