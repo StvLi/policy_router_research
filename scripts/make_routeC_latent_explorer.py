@@ -123,16 +123,16 @@ def main():
         paneBTitle=("<b>测试轨迹 · 8 局</b> · "
                     f"{len(Zev):,} 帧 · 同一 PCA 基投影 · "
                     "<span style='color:#ff7a18'>橙星=OOD 触发帧</span>"),
-        videoDir="",                                  # 演示集无本地视频
+        videoDir="videos/head",                       # 演示集头部视频（仓库内，100 集从 ep003100 起）
         ev_videoDir=a.eval25_videos,
         eval25VideoDir=a.eval25_videos,
         n=int(len(Ztr)), n_ep=int(len(offs) - 1),
-        ep_names=[str(int(ep)) for ep in np.unique(EPd)],
+        ep_names=[f"ep{int(ep):06d}" for ep in np.unique(EPd)],
         pc_var=[round(float(v) * 100, 2) for v in var[:3]],
         center=[0.0, 0.0],
         t_max=float(Td.max() / 25.0),
         cls_counts={}, no_cls=True, cmode0="t", ev_palette=True,
-        batch0Label="路线 C 测试轨迹（8 局）",
+        batch0Label="路线 C 测试轨迹（8 局）", autoplayFirstFire=True,
         ev_n=int(len(Zev)), ev_rollouts=rollouts, ev2_n=0, ev2_rollouts=[],
         ev_fire={"0": fire},
         approx=False,
@@ -145,6 +145,7 @@ def main():
         off=b64(offs, np.int32),
         t=b64(Td.astype(np.float32) / 25.0, np.float32),
         score=b64(Sc_d, np.float32),
+        p=b64(P_d, np.float32),
         ang=b64(phase3(Ztr), np.float32),
         ev=dict(n=int(len(Zev)), z=b64(Zev, np.float32),
                 t=b64(Te_s.astype(np.float32) / 25.0, np.float32),

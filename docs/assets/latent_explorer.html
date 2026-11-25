@@ -185,6 +185,7 @@ const EPI = dec(DATA.ep, Int32Array);
 const OFF = dec(DATA.off, Int32Array);
 const TT = dec(DATA.t, Float32Array);
 const SC = dec(DATA.score, Float32Array);
+const SCp = DATA.p ? dec(DATA.p, Float32Array) : null;   // 可选的逐帧 p（路线 C 页面提供）
 const ANG = dec(DATA.ang, Float32Array);
 const N = META.n;
 
@@ -436,7 +437,7 @@ function drawMarkerA() {
   const i = sampleAtTime(selEpIdx, t);
   if (i < 0) return;
   const seg = segAt(selEpIdx, t);
-  const col = (seg && seg[3] >= 0) ? clsColor[seg[3]] : '#ffffff';
+  const col = (seg && seg[3] >= 0) ? clsColor[seg[3]] : (META.no_cls ? '#ffb648' : '#ffffff');
 
   const a0 = OFF[selEpIdx];
   ctx.strokeStyle = col; ctx.globalAlpha = 0.9; ctx.lineWidth = 2.6 * DPR;
@@ -452,6 +453,10 @@ function drawMarkerA() {
   if (seg) {
     VA.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
       + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+  } else if (META.no_cls) {
+    VA.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
+      + `${META.ep_names[selEpIdx]} · t=${t.toFixed(2)}s<br>`
+      + `异常分数 ${SC[i].toFixed(3)}　p=${SCp ? SCp[i].toFixed(3) : '—'}`;
   }
 }
 
@@ -545,16 +550,25 @@ function drawStaticB() {
       if (!f || f.idx < 0) continue;
       const i2 = B.off[r] + Math.min(f.idx, B.off[r+1] - B.off[r] - 1);
       const sel = (b === batchSel && r === selEvIdx);
-      g.globalAlpha = sel ? 1 : 0.75;
-      g.strokeStyle = '#ff7a18'; g.lineWidth = 1.0 * DPR;
+      const R = (sel ? 11 : 9) * DPR;
+      g.globalAlpha = sel ? 1 : 0.92;
+      g.fillStyle = '#0b0d12';                       // 深色光晕，压住底下的白点
+      g.beginPath(); g.arc(B.sx[i2], B.sy[i2], R * 1.55, 0, 2*Math.PI); g.fill();
+      g.strokeStyle = '#ff7a18'; g.lineWidth = (sel ? 1.8 : 1.3) * DPR;
       g.setLineDash([3*DPR, 3*DPR]);
-      g.beginPath(); g.arc(B.sx[i2], B.sy[i2], (sel ? 7 : 5)*DPR, 0, 2*Math.PI); g.stroke();
+      g.beginPath(); g.arc(B.sx[i2], B.sy[i2], R * 1.15, 0, 2*Math.PI); g.stroke();
       g.setLineDash([]);
-      if (sel) star(g, B.sx[i2], B.sy[i2], 6.5*DPR, '#ff7a18');
-      g.globalAlpha = sel ? 0.95 : 0.6;
-      g.fillStyle = '#ffb648'; g.font = `${9.5*DPR}px sans-serif`;
+      star(g, B.sx[i2], B.sy[i2], R, '#ff7a18');
+      star(g, B.sx[i2], B.sy[i2], R * 0.55, '#ffd08a');
       const ro2 = (B.rollouts || [])[r] || {};
-      g.fillText(`${ro2.layout !== undefined ? ro2.layout : r}`, B.sx[i2] + 8*DPR, B.sy[i2] - 6*DPR);
+      const lab = `OOD ${ro2.layout !== undefined ? ro2.layout : r}`;
+      if (!sel) { g.globalAlpha = 1; continue; }
+      g.font = `bold ${10*DPR}px sans-serif`;
+      const tw = g.measureText(lab).width;
+      g.fillStyle = '#1a1206'; g.globalAlpha = 0.95;
+      g.fillRect(B.sx[i2] + R * 1.25, B.sy[i2] - 15*DPR, tw + 8*DPR, 14*DPR);
+      g.fillStyle = '#ffb648';
+      g.fillText(lab, B.sx[i2] + R * 1.25 + 4*DPR, B.sy[i2] - 4*DPR);
       g.globalAlpha = 1;
     }
   }
@@ -712,7 +726,7 @@ function hover(e) {
   tip.style.left = (hit.px + 14) + 'px';
   tip.style.top = (hit.py + 14) + 'px';
   if (P === PA) {
-    tip.innerHTML = `训练 · ep${META.ep_names[EPI[best]]}　t=${TT[best].toFixed(2)}s<br>`
+    tip.innerHTML = `训练 · ${META.ep_names[EPI[best]]}　t=${TT[best].toFixed(2)}s<br>`
       + (META.no_cls ? '' : `类 c${CLS[best]}　`)
       + `相位 ${(ANG[best]*180/Math.PI).toFixed(0)}°<br>`
       + (META.no_cls ? `异常分数 ${SC[best].toFixed(3)}` : `不典型度 ${SC[best].toFixed(3)}`);
@@ -844,7 +858,9 @@ function fillRollouts(b) {
   (BATCHES[b].rollouts || []).forEach((r, i) => {
     const o = document.createElement('option');
     o.value = i;
-    o.textContent = BATCHES[b].label(i) + ` (${r.n} 帧)`;
+    const f = batchFire(b, i);
+    const tag = (f && f.idx >= 0) ? `  ⚑ OOD@${f.t.toFixed(1)}s` : '  ○ 无触发';
+    o.textContent = BATCHES[b].label(i) + ` (${r.n} 帧)${tag}`;
     evSel.appendChild(o);
   });
   evSel.value = -1;
@@ -890,6 +906,15 @@ evSel.onchange = () => {
 
 fillRollouts(0);
 updatePaneTitle();
+if (META.autoplayFirstFire) {
+  const f = (META.ev_fire || {})['0'] || {};
+  const k = Object.keys(f).find(j => f[j] && f[j].idx >= 0);
+  if (k !== undefined) {
+    evSel.value = k;
+    selEvIdx = parseInt(k, 10);
+    VB.load((BATCHES[0].rollouts[selEvIdx] || {}).file);
+  }
+}
 
 ['evShow', 'evLines', 'evOkOnly'].forEach(id => {
   document.getElementById(id).onchange = () => draw();
