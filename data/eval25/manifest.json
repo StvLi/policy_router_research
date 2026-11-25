@@ -1,0 +1,870 @@
+{
+ "task": "store_laptop_and_headphones",
+ "task_full": "Hang the headphones on the headphone stand, close the laptop, then place it into the vertical laptop stand.",
+ "policy": "Pi_05 ckpt 30000 (T arm), action_type=joint",
+ "layouts": 25,
+ "success": 1,
+ "video_fps": 25,
+ "video_size": [
+  640,
+  480
+ ],
+ "cam_order": [
+  "head",
+  "left_wrist",
+  "right_wrist"
+ ],
+ "n_state_rows": 19635,
+ "episodes": [
+  {
+   "ep": 0,
+   "layout_id": 0,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000000_cam_head_fail.mp4",
+     "bytes": 1754726,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000000_cam_left_wrist_fail.mp4",
+     "bytes": 2756456,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000000_cam_right_wrist_fail.mp4",
+     "bytes": 3015641,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.2944074869155884,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 1,
+   "layout_id": 1,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000001_cam_head_fail.mp4",
+     "bytes": 1891342,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000001_cam_left_wrist_fail.mp4",
+     "bytes": 3259600,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000001_cam_right_wrist_fail.mp4",
+     "bytes": 3164324,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.4171181917190552,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 2,
+   "layout_id": 2,
+   "success": false,
+   "official_score": 0.8,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000002_cam_head_fail.mp4",
+     "bytes": 1770624,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000002_cam_left_wrist_fail.mp4",
+     "bytes": 3039616,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000002_cam_right_wrist_fail.mp4",
+     "bytes": 2713433,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.2142045497894287,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 3,
+   "layout_id": 3,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000003_cam_head_fail.mp4",
+     "bytes": 1702250,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000003_cam_left_wrist_fail.mp4",
+     "bytes": 2703745,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000003_cam_right_wrist_fail.mp4",
+     "bytes": 2739433,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.2535085678100586,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 4,
+   "layout_id": 4,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000004_cam_head_fail.mp4",
+     "bytes": 1857398,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000004_cam_left_wrist_fail.mp4",
+     "bytes": 2902157,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000004_cam_right_wrist_fail.mp4",
+     "bytes": 2894638,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.269961953163147,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 5,
+   "layout_id": 5,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000005_cam_head_fail.mp4",
+     "bytes": 1911729,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000005_cam_left_wrist_fail.mp4",
+     "bytes": 2907310,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000005_cam_right_wrist_fail.mp4",
+     "bytes": 3416136,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.4436662197113037,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 6,
+   "layout_id": 6,
+   "success": false,
+   "official_score": 0.2,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000006_cam_head_fail.mp4",
+     "bytes": 1445592,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000006_cam_left_wrist_fail.mp4",
+     "bytes": 2481891,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000006_cam_right_wrist_fail.mp4",
+     "bytes": 2316322,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.1531050205230713,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 7,
+   "layout_id": 7,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000007_cam_head_fail.mp4",
+     "bytes": 2067089,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000007_cam_left_wrist_fail.mp4",
+     "bytes": 3208349,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000007_cam_right_wrist_fail.mp4",
+     "bytes": 3495104,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.3517109155654907,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 8,
+   "layout_id": 8,
+   "success": false,
+   "official_score": 0.8,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000008_cam_head_fail.mp4",
+     "bytes": 1408428,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000008_cam_left_wrist_fail.mp4",
+     "bytes": 2357052,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000008_cam_right_wrist_fail.mp4",
+     "bytes": 2321248,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.1323329210281372,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 9,
+   "layout_id": 9,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000009_cam_head_fail.mp4",
+     "bytes": 1901659,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000009_cam_left_wrist_fail.mp4",
+     "bytes": 3073794,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000009_cam_right_wrist_fail.mp4",
+     "bytes": 3595919,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.3773857355117798,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 10,
+   "layout_id": 10,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000010_cam_head_fail.mp4",
+     "bytes": 1892486,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000010_cam_left_wrist_fail.mp4",
+     "bytes": 3002851,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000010_cam_right_wrist_fail.mp4",
+     "bytes": 3696510,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.5700052976608276,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 11,
+   "layout_id": 11,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000011_cam_head_fail.mp4",
+     "bytes": 1928585,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000011_cam_left_wrist_fail.mp4",
+     "bytes": 3230107,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000011_cam_right_wrist_fail.mp4",
+     "bytes": 4888929,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.6721214056015015,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 12,
+   "layout_id": 12,
+   "success": true,
+   "official_score": 1.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000012_cam_head_success.mp4",
+     "bytes": 1016060,
+     "frames": 435
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000012_cam_left_wrist_success.mp4",
+     "bytes": 1705807,
+     "frames": 435
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000012_cam_right_wrist_success.mp4",
+     "bytes": 1880423,
+     "frames": 435
+    }
+   },
+   "n_frames": 435,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 87,
+   "stride": 5,
+   "raw_sub_mean": 1.148488163948059,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 13,
+   "layout_id": 13,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000013_cam_head_fail.mp4",
+     "bytes": 1287739,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000013_cam_left_wrist_fail.mp4",
+     "bytes": 2155644,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000013_cam_right_wrist_fail.mp4",
+     "bytes": 2038550,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.186691164970398,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 14,
+   "layout_id": 14,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000014_cam_head_fail.mp4",
+     "bytes": 1508017,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000014_cam_left_wrist_fail.mp4",
+     "bytes": 2593960,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000014_cam_right_wrist_fail.mp4",
+     "bytes": 2673284,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.2518267631530762,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 15,
+   "layout_id": 15,
+   "success": false,
+   "official_score": 0.2,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000015_cam_head_fail.mp4",
+     "bytes": 1770635,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000015_cam_left_wrist_fail.mp4",
+     "bytes": 2770969,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000015_cam_right_wrist_fail.mp4",
+     "bytes": 2681508,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.1957658529281616,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 16,
+   "layout_id": 16,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000016_cam_head_fail.mp4",
+     "bytes": 1832144,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000016_cam_left_wrist_fail.mp4",
+     "bytes": 2743433,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000016_cam_right_wrist_fail.mp4",
+     "bytes": 2913992,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.4049065113067627,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 17,
+   "layout_id": 17,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000017_cam_head_fail.mp4",
+     "bytes": 1672746,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000017_cam_left_wrist_fail.mp4",
+     "bytes": 2605472,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000017_cam_right_wrist_fail.mp4",
+     "bytes": 2987511,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.7310250997543335,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 18,
+   "layout_id": 18,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000018_cam_head_fail.mp4",
+     "bytes": 1735487,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000018_cam_left_wrist_fail.mp4",
+     "bytes": 3002862,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000018_cam_right_wrist_fail.mp4",
+     "bytes": 2735322,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.2562323808670044,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 19,
+   "layout_id": 19,
+   "success": false,
+   "official_score": 0.2,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000019_cam_head_fail.mp4",
+     "bytes": 1423164,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000019_cam_left_wrist_fail.mp4",
+     "bytes": 2298347,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000019_cam_right_wrist_fail.mp4",
+     "bytes": 2451092,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.1418757438659668,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 20,
+   "layout_id": 20,
+   "success": false,
+   "official_score": 0.2,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000020_cam_head_fail.mp4",
+     "bytes": 1964331,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000020_cam_left_wrist_fail.mp4",
+     "bytes": 3139007,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000020_cam_right_wrist_fail.mp4",
+     "bytes": 3298455,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.51687490940094,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 21,
+   "layout_id": 21,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000021_cam_head_fail.mp4",
+     "bytes": 1825504,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000021_cam_left_wrist_fail.mp4",
+     "bytes": 2901104,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000021_cam_right_wrist_fail.mp4",
+     "bytes": 3040704,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.416574478149414,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 22,
+   "layout_id": 22,
+   "success": false,
+   "official_score": 0.2,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000022_cam_head_fail.mp4",
+     "bytes": 1483065,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000022_cam_left_wrist_fail.mp4",
+     "bytes": 2450497,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000022_cam_right_wrist_fail.mp4",
+     "bytes": 2777162,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.2980031967163086,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 23,
+   "layout_id": 23,
+   "success": false,
+   "official_score": 0.2,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000023_cam_head_fail.mp4",
+     "bytes": 1351597,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000023_cam_left_wrist_fail.mp4",
+     "bytes": 1986993,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000023_cam_right_wrist_fail.mp4",
+     "bytes": 2356120,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.2338616847991943,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  },
+  {
+   "ep": 24,
+   "layout_id": 24,
+   "success": false,
+   "official_score": 0.0,
+   "cams": {
+    "head": {
+     "file": "videos/episode_0000024_cam_head_fail.mp4",
+     "bytes": 1914655,
+     "frames": 801
+    },
+    "left_wrist": {
+     "file": "videos/episode_0000024_cam_left_wrist_fail.mp4",
+     "bytes": 2729792,
+     "frames": 801
+    },
+    "right_wrist": {
+     "file": "videos/episode_0000024_cam_right_wrist_fail.mp4",
+     "bytes": 5082095,
+     "frames": 801
+    }
+   },
+   "n_frames": 801,
+   "fps": 25.0,
+   "size": [
+    640,
+    480
+   ],
+   "sampled_points": 161,
+   "stride": 5,
+   "raw_sub_mean": 1.4328234195709229,
+   "rate_subtask": 1.0,
+   "rate_cap": 0.0
+  }
+ ]
+}

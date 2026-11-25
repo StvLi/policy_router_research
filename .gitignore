@@ -16,3 +16,8 @@ docs/assets/videos/*/left_wrist.mp4
 docs/assets/videos/*/right_wrist.mp4
 # WebM 兜底副本（浏览器若不支持 H.264 时用；体积较大，不入库）
 docs/assets/videos/head_webm/
+
+# 25 局评测的原始视频与状态落盘（约 217 MB；只入库 manifest.json 与 README）
+data/eval25/videos/
+data/eval25/states.jsonl
+data/eval25/scores.json
