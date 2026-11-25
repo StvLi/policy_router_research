@@ -65,19 +65,6 @@
   #vtime { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
   #vcap .chip { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
   #vbtn { margin-left:auto; width:auto; padding:2px 8px; font-size:11px; }
-
-  #paneC.hide { display:none; }
-  #vidC { flex:0 0 auto; margin:6px 8px 2px; background:#11141bee;
-          border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
-  #vidC.on { display:block; }
-  #vidC video { width:100%; aspect-ratio:4/3; max-height:30vh; object-fit:contain;
-               border-radius:4px; display:block; background:#000; }
-  #vheadC { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
-  #vheadC b { color:#d8dee9; font-weight:600; }
-  #vcapC { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
-  #vseekC { width:100%; margin:6px 0 2px; accent-color:#ffb648; height:14px; }
-  #vtimeC { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
-  #vbtnC { margin-left:auto; width:auto; padding:2px 8px; font-size:11px; }
 </style>
 </head>
 <body>
@@ -119,16 +106,6 @@
       <select id="evsel"><option value="-1">（不播放）</option></select>
     </div>
 
-
-    <div class="grp">
-      <div class="lbl">路线 C（第三栏）</div>
-      <label class="row"><input type="checkbox" id="rcOn" checked> 显示第三栏</label>
-      <label class="row"><input type="checkbox" id="rcDemo" checked> 演示点（灰）</label>
-      <label class="row"><input type="checkbox" id="rcFire" checked> 触发帧（橙星）</label>
-      <label class="row"><input type="checkbox" id="rcOnly" checked> 只显示选中轨迹</label>
-      <div class="lbl" style="margin-top:8px">测试轨迹（播放/高亮）</div>
-      <select id="rcsel"><option value="-1">（不播放）</option></select>
-    </div>
     <div class="grp">
       <div class="lbl">评测栏（右）</div>
       <label class="row"><input type="checkbox" id="evShow" checked> 显示评测点（白）</label>
@@ -165,23 +142,12 @@
 
   <div id="stage">
     <div class="pane" id="paneA">
-      <div class="ptitle"><b>训练数据 · 演示</b> · 10,366 帧 / 100 集 · 按子任务着色</div>
+      <div class="ptitle" id="ptitleA"><b>训练数据 · 演示</b> · 10,366 帧 / 100 集 · 按子任务着色</div>
       <canvas id="cv"></canvas>
     </div>
     <div class="pane" id="paneB">
       <div class="ptitle" id="ptitleB"><b>评测轨迹</b></div>
       <canvas id="cv2"></canvas>
-    </div>
-    <div class="pane" id="paneC">
-      <div class="ptitle" id="ptitleC"><b>路线 C · π0 中间表征</b></div>
-      <canvas id="cv3"></canvas>
-      <div id="vidC">
-        <div id="vheadC"><b id="vtitleC">—</b><button id="vbtnC">暂停</button></div>
-        <video id="vC" muted loop playsinline preload="auto"></video>
-        <input type="range" id="vseekC" min="0" max="1000" step="1" value="0">
-        <div id="vtimeC"></div>
-        <div id="vcapC"></div>
-      </div>
     </div>
     <div id="vid">
       <div id="vhead"><b id="vtitle">—</b><button id="vbtn">暂停</button></div>
@@ -241,24 +207,6 @@ const E2OFF = E2.n ? dec(E2.off, Int32Array) : new Int32Array(1);
 const E2OK = E2.n ? dec(E2.ok, Uint8Array) : new Uint8Array(0);
 const N2 = E2.n || 0;
 
-// 第三栏：路线 C（π0 中间表征，自有 PCA 坐标系）
-const RC = DATA.rc || {};
-const RCD   = RC.n ? dec(RC.demo,  Float32Array) : new Float32Array(0);
-const RCE   = RC.n ? dec(RC.z,     Float32Array) : new Float32Array(0);
-const RCT   = RC.n ? dec(RC.t,     Float32Array) : new Float32Array(0);
-const RCEP  = RC.n ? dec(RC.ep,    Int32Array)   : new Int32Array(0);
-const RCS   = RC.n ? dec(RC.score, Float32Array) : new Float32Array(0);
-const RCP   = RC.n ? dec(RC.p,     Float32Array) : new Float32Array(0);
-const RCOFF = RC.n ? dec(RC.off,   Int32Array)   : new Int32Array(1);
-const RCN = RC.n || 0, RCDN = RC.nd || 0;
-const RCLAY  = META.rc_layouts || [];
-const RCFIRE = META.rc_fire || {};
-const rcFileOf = L => {
-  const r = (META.ev2_rollouts || []).find(o => o.layout === L) || {};
-  return r.file || `episode_${String(L).padStart(7,'0')}_cam_head_fail`;
-};
-const rcOkOf = L => !!((META.ev2_rollouts || []).find(o => o.layout === L) || {}).ok;
-
 const BATCHES = [
   {name: '第一批', n: NE, z: EVZ, t: EVT, ep: EVEP, off: EVOFF, ok: EVOK,
    rollouts: META.ev_rollouts || [], dir: META.ev_videoDir, tint: '#f2f6fc', label: b => `#${b} ${(META.ev_rollouts[b]||{}).cfg||''} · layout ${(META.ev_rollouts[b]||{}).layout} · ${(META.ev_rollouts[b]||{}).ok?'成功':'失败'}`},
@@ -269,7 +217,7 @@ let batchSel = 0;          // 0/1 = 单批；2 = 叠加
 
 const PAL = ['#4c9be8','#f0932b','#2ecc71','#e74c3c','#9b59b6','#1abc9c','#e67e22','#95a5a6',
              '#3498db','#e84393','#00b894','#fdcb6e','#6c5ce7','#d63031','#00cec9','#b2bec3'];
-const clsList = Object.keys(META.cls_counts).map(Number).sort((a,b)=>a-b);
+const clsList = META.no_cls ? [] : Object.keys(META.cls_counts).map(Number).sort((a,b)=>a-b);
 const clsColor = {}; clsList.forEach((c,i)=> clsColor[c] = PAL[i % PAL.length]);
 const clsVisible = {}; clsList.forEach(c => clsVisible[c] = true);
 
@@ -284,8 +232,7 @@ function mkPane(id) {
   o.bg = o.bgCv.getContext('2d');
   return o;
 }
-const PA = mkPane('cv'), PB = mkPane('cv2'), PCC = mkPane('cv3');
-PCC.extScale = 1;                  // 路线 C 坐标已归一化到 ±1，与 A/B 的 ext 无关
+const PA = mkPane('cv'), PB = mkPane('cv2');
 
 let ext = 0;
 for (let i = 0; i < 3 * N; i++) ext = Math.max(ext, Math.abs(PC[i]));
@@ -302,7 +249,7 @@ alloc(PA, N); alloc(PB, NE);
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  for (const P of [PA, PB, PCC]) {
+  for (const P of [PA, PB]) {
     const r = P.el.getBoundingClientRect();
     P.W = Math.max(1, Math.round(r.width * DPR));
     P.H = Math.max(1, Math.round(r.height * DPR));
@@ -312,19 +259,6 @@ function resize() {
   draw();
 }
 window.addEventListener('resize', resize);
-// 视频面板加载/隐藏会改变画布高度 → 用 ResizeObserver 跟上，否则投影尺度会错
-if (window.ResizeObserver) {
-  let pend = false;
-  const ro = new ResizeObserver(() => {
-    if (pend) return;
-    pend = true;
-    requestAnimationFrame(() => { pend = false; resize(); });
-  });
-  ['paneA', 'paneB', 'paneC'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) ro.observe(el);
-  });
-}
 
 // ---------- 颜色映射 ----------
 function ramp(v, stops) {
@@ -343,7 +277,7 @@ function ramp(v, stops) {
 const CMAP_T = [[0,[40,20,90]],[0.25,[30,120,180]],[0.5,[40,190,120]],[0.75,[250,200,60]],[1,[250,240,180]]];
 const CMAP_S = [[0,[20,70,130]],[0.5,[250,200,60]],[1,[200,30,30]]];
 
-let cmode = 'cls';
+let cmode = META.cmode0 || 'cls';
 {
   const p = Array.from(SC).sort((a,b)=>a-b);
   window.__slo = p[Math.floor(0.02*p.length)]; window.__shi = p[Math.floor(0.98*p.length)];
@@ -363,23 +297,21 @@ function colorOf(i) {
 function updateCam(P) {
   const cyw = Math.cos(yaw), syw = Math.sin(yaw);
   const cp = Math.cos(pitch), sp = Math.sin(pitch);
-  const e = P.extScale || ext;
-  const scale0 = Math.min(P.W, P.H) * 0.42 * zoom / e;
-  return { cyw, syw, cp, sp, scale0, e, cx: P.W/2 + panX*DPR, cyy: P.H/2 + panY*DPR };
+  const scale0 = Math.min(P.W, P.H) * 0.42 * zoom / ext;
+  return { cyw, syw, cp, sp, scale0, cx: P.W/2 + panX*DPR, cyy: P.H/2 + panY*DPR };
 }
 
 function projectAll(P, X3) {
   const cam = updateCam(P);
-  const { cyw, syw, cp, sp, scale0, cx, cyy, e } = cam;
-  const sh = P.shift || [0,0,0];
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
   for (let i = 0; i < P.n; i++) {
-    const x = X3[3*i] - sh[0], y = X3[3*i+1] - sh[1], z = X3[3*i+2] - sh[2];
+    const x = X3[3*i], y = X3[3*i+1], z = X3[3*i+2];
     const x1 = cyw * x + syw * z;
     const z1 = -syw * x + cyw * z;
     const y2 = cp * y - sp * z1;
     const z2 = sp * y + cp * z1;
     P.zrot[i] = z2;
-    const f = fov / (fov + z2 * e * 1.2);
+    const f = fov / (fov + z2 * ext * 1.2);
     P.sx[i] = cx + x1 * scale0 * f;
     P.sy[i] = cyy - y2 * scale0 * f;
     P.ssz[i] = f;
@@ -388,24 +320,20 @@ function projectAll(P, X3) {
 }
 
 function project(x, y, z, cam, P) {
-  const { cyw, syw, cp, sp, scale0, cx, cyy, e } = cam;
-  const sh = P.shift || [0,0,0];
-  x -= sh[0]; y -= sh[1]; z -= sh[2];
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
   const x1 = cyw * x + syw * z;
   const z1 = -syw * x + cyw * z;
   const y2 = cp * y - sp * z1;
   const z2 = sp * y + cp * z1;
-  const f = fov / (fov + z2 * e * 1.2);
+  const f = fov / (fov + z2 * ext * 1.2);
   return [cx + x1 * scale0 * f, cyy - y2 * scale0 * f];
 }
 
 function drawAxes(P, g, cam) {
-  const O = P.shift || [0,0,0];
-  const o = project(O[0], O[1], O[2], cam, P);
-  const e = cam.e, pv = P.axisVar || META.pc_var;
-  const cols = [['#c0392b', [O[0]+e, O[1], O[2]], `PC1 ${pv[0]}%`],
-                ['#27ae60', [O[0], O[1]+e, O[2]], `PC2 ${pv[1]}%`],
-                ['#2980b9', [O[0], O[1], O[2]+e], `PC3 ${pv[2]}%`]];
+  const o = project(0,0,0, cam, P);
+  const cols = [['#c0392b', [ext,0,0], `PC1 ${META.pc_var[0]}%`],
+                ['#27ae60', [0,ext,0], `PC2 ${META.pc_var[1]}%`],
+                ['#2980b9', [0,0,ext], `PC3 ${META.pc_var[2]}%`]];
   for (const [col, v, lab] of cols) {
     const p = project(v[0], v[1], v[2], cam, P);
     g.strokeStyle = col; g.globalAlpha = 0.45; g.lineWidth = 1.2 * DPR;
@@ -468,6 +396,22 @@ function dot(ctx, x, y, col, r) {
   ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6 * DPR; ctx.stroke();
   ctx.globalAlpha = 1;
 }
+function star(ctx, x, y, r, col) {
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI/2 + k * Math.PI/5, rr = (k % 2 ? r*0.46 : r);
+    const px = x + Math.cos(a)*rr, py = y + Math.sin(a)*rr;
+    k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+}
+
+// 评测栏的触发点（META.ev_fire[batch][rollout] = {idx, t}）；路线 A 无此字段 → 不画
+function batchFire(b, r) {
+  const f = (META.ev_fire || {})[String(b)];
+  return (f && f[String(r)]) || null;
+}
+
 
 function sampleAtTime(epi, t) {
   const a0 = OFF[epi], a1 = OFF[epi + 1];
@@ -515,7 +459,6 @@ function drawMarkerA() {
 function ensureEv(b) {
   const B = BATCHES[b];
   if (B.sx) return B;
-  B.ext = ext;
   B.sx = new Float32Array(B.n); B.sy = new Float32Array(B.n);
   B.ssz = new Float32Array(B.n); B.zrot = new Float32Array(B.n);
   return B;
@@ -523,7 +466,6 @@ function ensureEv(b) {
 
 function projectEv(B, cam) {
   const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
-  const e = B.ext || ext;
   for (let i = 0; i < B.n; i++) {
     const x = B.z[3*i], y = B.z[3*i+1], z = B.z[3*i+2];
     const x1 = cyw * x + syw * z;
@@ -531,7 +473,7 @@ function projectEv(B, cam) {
     const y2 = cp * y - sp * z1;
     const z2 = sp * y + cp * z1;
     B.zrot[i] = z2;
-    const f = fov / (fov + z2 * e * 1.2);
+    const f = fov / (fov + z2 * ext * 1.2);
     B.sx[i] = cx + x1 * scale0 * f;
     B.sy[i] = cyy - y2 * scale0 * f;
     B.ssz[i] = f;
@@ -564,11 +506,13 @@ function drawStaticB() {
     if (!B.n) continue;
     const dense = (batchSel !== 2);
 
+    const pal = META.ev_palette ? 1 : 0;
     if (showLines) {
       g.strokeStyle = B.tint; g.globalAlpha = dense ? 0.10 : 0.06; g.lineWidth = 1.0 * DPR;
       for (let r = 0; r + 1 < B.off.length; r++) {
         const a0 = B.off[r], a1 = B.off[r + 1];
         if (a1 - a0 < 2) continue;
+        if (pal) { g.strokeStyle = PAL[r % PAL.length]; g.globalAlpha = 0.35; }
         g.beginPath();
         let started = false;
         for (let i = a0; i < a1; i++) {
@@ -577,7 +521,7 @@ function drawStaticB() {
         }
         g.stroke();
       }
-      g.globalAlpha = 1;
+      g.strokeStyle = B.tint; g.globalAlpha = 1;
     }
 
     if (showPts) {
@@ -587,9 +531,30 @@ function drawStaticB() {
         const i = ord[k];
         if (okOnly && !B.ok[i]) continue;
         const s = base * B.ssz[i] * DPR;
-        g.fillStyle = B.tint; g.globalAlpha = (b === 1) ? 0.45 : 0.38;
+        const rr = B.ep[i];
+        g.fillStyle = pal ? PAL[rr % PAL.length] : B.tint;
+        g.globalAlpha = pal ? 0.62 : ((b === 1) ? 0.45 : 0.38);
         g.fillRect(B.sx[i] - s/2, B.sy[i] - s/2, s, s);
       }
+      g.globalAlpha = 1;
+    }
+
+    // 触发点（橙星）
+    for (let r = 0; r + 1 < B.off.length; r++) {
+      const f = batchFire(b, r);
+      if (!f || f.idx < 0) continue;
+      const i2 = B.off[r] + Math.min(f.idx, B.off[r+1] - B.off[r] - 1);
+      const sel = (b === batchSel && r === selEvIdx);
+      g.globalAlpha = sel ? 1 : 0.75;
+      g.strokeStyle = '#ff7a18'; g.lineWidth = 1.0 * DPR;
+      g.setLineDash([3*DPR, 3*DPR]);
+      g.beginPath(); g.arc(B.sx[i2], B.sy[i2], (sel ? 7 : 5)*DPR, 0, 2*Math.PI); g.stroke();
+      g.setLineDash([]);
+      if (sel) star(g, B.sx[i2], B.sy[i2], 6.5*DPR, '#ff7a18');
+      g.globalAlpha = sel ? 0.95 : 0.6;
+      g.fillStyle = '#ffb648'; g.font = `${9.5*DPR}px sans-serif`;
+      const ro2 = (B.rollouts || [])[r] || {};
+      g.fillText(`${ro2.layout !== undefined ? ro2.layout : r}`, B.sx[i2] + 8*DPR, B.sy[i2] - 6*DPR);
       g.globalAlpha = 1;
     }
   }
@@ -626,231 +591,40 @@ function drawMarkerB() {
   }
   ctx.stroke();
 
-  dot(ctx, B.sx[i], B.sy[i], col, 7);
+  const f0 = batchFire(batchSel, selEvIdx);
+  const fired = f0 && f0.idx >= 0 && f0.t !== null && t >= f0.t;
+  if (fired) {
+    const fi = a0 + Math.min(f0.idx, B.off[selEvIdx+1] - a0 - 1);
+    ctx.strokeStyle = '#ff5a1f'; ctx.lineWidth = 2.0 * DPR; ctx.globalAlpha = 0.95;
+    ctx.setLineDash([4*DPR, 3*DPR]);
+    ctx.beginPath(); ctx.arc(B.sx[fi], B.sy[fi], 11*DPR, 0, 2*Math.PI); ctx.stroke();
+    ctx.setLineDash([]);
+    star(ctx, B.sx[fi], B.sy[fi], 8*DPR, '#ff5a1f');
+    ctx.fillStyle = '#ff8a5c'; ctx.font = `bold ${10*DPR}px sans-serif`;
+    ctx.fillText('OOD', Math.min(P.W - 34*DPR, B.sx[fi] + 13*DPR), B.sy[fi] + 3*DPR);
+    ctx.globalAlpha = 1;
+  }
+  dot(ctx, B.sx[i], B.sy[i], fired ? '#ff5a1f' : col, 7);
   VB.sync();
   const ro = (B.rollouts || [])[selEvIdx] || {};
   const tag = batchSel === 1
     ? `eval25 #${selEvIdx} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'} · score ${(ro.score||0).toFixed(1)}`
     : `#${selEvIdx} ${ro.cfg || ''} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'}`;
-  VB.cap.innerHTML = `<span class="chip" style="background:${col}"></span>${tag}<br>`
-    + `t=${t.toFixed(2)}s　已投影 ${i - a0 + 1}/${B.off[selEvIdx+1] - a0} 帧`;
-}
-
-
-// ---------- 第三栏：路线 C（自有 PCA 坐标系）----------
-const RC_PAL = ['#4c9be8','#f0932b','#2ecc71','#e74c3c','#9b59b6','#1abc9c','#e67e22','#95a5a6'];
-function rcColor(L) { const i = RCLAY.indexOf(L); return RC_PAL[(i < 0 ? 0 : i) % RC_PAL.length]; }
-
-function rcPrj(P, X, n, key, cam) {
-  let B = P[key];
-  if (!B || B.n !== n) {
-    B = P[key] = { n, sx: new Float32Array(n), sy: new Float32Array(n),
-                   ssz: new Float32Array(n), zrot: new Float32Array(n), ord: new Int32Array(n) };
-  }
-  const { cyw, syw, cp, sp, scale0, cx, cyy, e } = cam;
-  const sh = P.shift || [0,0,0];
-  for (let i = 0; i < n; i++) {
-    const x = X[3*i] - sh[0], y = X[3*i+1] - sh[1], z = X[3*i+2] - sh[2];
-    const x1 = cyw * x + syw * z;
-    const z1 = -syw * x + cyw * z;
-    const y2 = cp * y - sp * z1;
-    const z2 = sp * y + cp * z1;
-    B.zrot[i] = z2;
-    const f = fov / (fov + z2 * e * 1.2);
-    B.sx[i] = cx + x1 * scale0 * f;
-    B.sy[i] = cyy - y2 * scale0 * f;
-    B.ssz[i] = f;
-  }
-  for (let i = 0; i < n; i++) B.ord[i] = i;
-  const ord = Array.from(B.ord).sort((a, b) => B.zrot[a] - B.zrot[b]);
-  for (let i = 0; i < n; i++) B.ord[i] = ord[i];
-  return B;
-}
-
-function star(ctx, x, y, r, col) {
-  ctx.beginPath();
-  for (let k = 0; k < 10; k++) {
-    const a = -Math.PI/2 + k * Math.PI/5, rr = (k % 2 ? r*0.46 : r);
-    const px = x + Math.cos(a)*rr, py = y + Math.sin(a)*rr;
-    k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-  }
-  ctx.closePath(); ctx.fillStyle = col; ctx.fill();
-}
-
-function rcFireOf(L) { return RCFIRE[String(L)] || { idx: -1, t: null }; }
-
-function drawStaticC() {
-  const P = PCC;
-  if (!P.el || !P.W) return;
-  const selEarly = selRCIdx >= 0 ? RCLAY[selRCIdx] : null;
-  const onlySel = document.getElementById('rcOnly').checked && selEarly !== null;
-  // 只显示选中轨迹时：以该轨迹质心为原点并自动缩放，便于看清形状
-  let fit = 1, shift = [0, 0, 0];
-  if (onlySel) {
-    const a0 = RCOFF[selRCIdx], a1 = RCOFF[selRCIdx + 1], n = a1 - a0;
-    for (let k = 0; k < 3; k++) {
-      let s = 0;
-      for (let i = a0; i < a1; i++) s += RCE[3*i + k];
-      shift[k] = s / Math.max(1, n);
-    }
-    let m = 0;
-    for (let i = a0; i < a1; i++)
-      for (let k = 0; k < 3; k++) m = Math.max(m, Math.abs(RCE[3*i + k] - shift[k]));
-    fit = m * 1.05 || 1;
-  }
-  P.extScale = fit; P.shift = shift;
-  if (onlySel) {                       // 试投影两轮，把选中轨迹顶到画布 86%
-    const a0 = RCOFF[selRCIdx], a1 = RCOFF[selRCIdx + 1];
-    for (let pass = 0; pass < 3; pass++) {
-      const c = updateCam(P);
-      const { cyw, syw, cp, sp, scale0, cx, cyy, e } = c;
-      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-      for (let i = a0; i < a1; i++) {
-        const x = RCE[3*i] - shift[0], y = RCE[3*i+1] - shift[1], z = RCE[3*i+2] - shift[2];
-        const x1r = cyw * x + syw * z, z1r = -syw * x + cyw * z;
-        const y2r = cp * y - sp * z1r, z2r = sp * y + cp * z1r;
-        const f = fov / (fov + z2r * e * 1.2);
-        const px = cx + x1r * scale0 * f, py = cyy - y2r * scale0 * f;
-        x0 = Math.min(x0, px); x1 = Math.max(x1, px);
-        y0 = Math.min(y0, py); y1 = Math.max(y1, py);
-      }
-      const k = Math.min(P.W * 0.86 / Math.max(8, x1 - x0), P.H * 0.86 / Math.max(8, y1 - y0));
-      if (Math.abs(k - 1) < 0.04) break;
-      P.extScale = P.extScale / k;
-    }
-  }
-  const g = P.bg;
-  g.clearRect(0, 0, P.W, P.H); g.fillStyle = '#0b0d12'; g.fillRect(0, 0, P.W, P.H);
-  const cam = updateCam(P);
-  drawAxes(P, g, cam);
-  if (!RCN) {
-    g.fillStyle = '#54607a'; g.font = `${12*DPR}px sans-serif`;
-    g.fillText('（无路线 C 图层）', 16*DPR, 40*DPR); return;
-  }
-  const pd = RCDN ? rcPrj(P, RCD, RCDN, 'prjD', cam) : null;
-  const pe = rcPrj(P, RCE, RCN, 'prjE', cam);
-  const base = parseFloat(document.getElementById('psize').value) * 0.8;
-  const dimOn = document.getElementById('dim').checked;
-  const selL = selEarly;
-
-  // 演示点（灰）
-  if (pd && document.getElementById('rcDemo').checked) {
-    g.fillStyle = '#8b95a8';
-    for (let k = 0; k < RCDN; k++) {
-      const i = pd.ord[k];
-      g.globalAlpha = selL !== null ? 0.17 : 0.30;
-      const s = 1.7 * pd.ssz[i] * DPR;
-      g.fillRect(pd.sx[i] - s/2, pd.sy[i] - s/2, s, s);
-    }
-    g.globalAlpha = 1;
-  }
-
-  // 8 条测试轨迹
-  for (let e = 0; e < RCLAY.length; e++) {
-    const L = RCLAY[e], a0 = RCOFF[e], a1 = RCOFF[e+1];
-    if (a1 - a0 < 2) continue;
-    const isSel = (L === selL);
-    if (onlySel && !isSel) continue;
-    const col = (isSel && onlySel) ? '#9fb0c8' : rcColor(L);
-    // 连线
-    g.strokeStyle = col; g.globalAlpha = isSel ? 0.34 : 0.13;
-    g.lineWidth = (isSel ? 1.5 : 1.0) * DPR;
-    g.beginPath();
-    for (let i = a0; i < a1; i++) i === a0 ? g.moveTo(pe.sx[i], pe.sy[i]) : g.lineTo(pe.sx[i], pe.sy[i]);
-    g.stroke();
-    // 点
-    g.fillStyle = col;
-    for (let i = a0; i < a1; i++) {
-      g.globalAlpha = (selL === null || isSel) ? 0.55 : (dimOn ? 0.12 : 0.25);
-      const s = base * pe.ssz[i] * DPR;
-      g.fillRect(pe.sx[i] - s/2, pe.sy[i] - s/2, s, s);
-    }
-    g.globalAlpha = 1;
-  }
-
-  // 触发帧（橙星）
-  if (document.getElementById('rcFire').checked) {
-    for (let e = 0; e < RCLAY.length; e++) {
-      const L = RCLAY[e], f = rcFireOf(L);
-      if (f.idx < 0) continue;
-      const a0 = RCOFF[e], i = a0 + Math.min(f.idx, RCOFF[e+1] - a0 - 1);
-      const isSel = (L === selL);
-      const x = pe.sx[i], y = pe.sy[i];
-      g.globalAlpha = isSel ? 1 : 0.62;         // 未选中：空心小星，仍能看到失效点的分布
-      g.strokeStyle = '#ff7a18'; g.lineWidth = 1.0 * DPR;
-      g.setLineDash([3*DPR, 3*DPR]);
-      g.beginPath(); g.arc(x, y, (isSel ? 7 : 5)*DPR, 0, 2*Math.PI); g.stroke();
-      g.setLineDash([]);
-      if (isSel) star(g, x, y, 6.5*DPR, '#ff7a18');
-      else {
-        g.lineWidth = 1.4 * DPR;
-        g.beginPath(); g.arc(x, y, 2.6*DPR, 0, 2*Math.PI);
-        g.strokeStyle = '#ff7a18'; g.stroke();
-      }
-      g.globalAlpha = isSel ? 0.95 : 0.55;
-      g.fillStyle = '#ffb648'; g.font = `${9.5*DPR}px sans-serif`;
-      const tx = Math.min(P.W - 22*DPR, Math.max(4*DPR, x + (isSel ? 9 : 7)*DPR));
-      const ty = Math.min(P.H - 4*DPR, Math.max(11*DPR, y - 6*DPR));
-      g.fillText(`${L}`, tx, ty);
-      g.globalAlpha = 1;
-    }
-  }
-}
-
-function drawMarkerC() {
-  if (selRCIdx < 0 || !RCN) return;
-  if (VC.el.readyState < 1) return;
-  const P = PCC, E = P.prjE;
-  if (!E) return;
-  const ctx = P.ctx, t = VC.el.currentTime;
-  const a0 = RCOFF[selRCIdx], a1 = RCOFF[selRCIdx + 1];
-  if (a1 - a0 < 2) return;
-  let lo = a0, hi = a1 - 1;
-  while (lo < hi) { const m = (lo + hi) >> 1; if (RCT[m] < t) lo = m + 1; else hi = m; }
-  let i = lo;
-  if (i > a0 && Math.abs(RCT[i-1] - t) < Math.abs(RCT[i] - t)) i--;
-  const col = '#ffb648';
-
-  ctx.strokeStyle = col; ctx.globalAlpha = 0.95; ctx.lineWidth = 2.6 * DPR;
-  ctx.beginPath();
-  for (let j = a0; j <= i; j++) j === a0 ? ctx.moveTo(E.sx[j], E.sy[j]) : ctx.lineTo(E.sx[j], E.sy[j]);
-  ctx.stroke(); ctx.globalAlpha = 1;
-  const L = RCLAY[selRCIdx], f = rcFireOf(L);
-  const p = RCP[i], sc = RCS[i];
-  const fired = f.idx >= 0 && f.t !== null && t >= f.t;
-
-  if (fired) {                                   // 已触发：在当前点画红环，标出触发帧
-    const fa = RCOFF[selRCIdx] + Math.min(f.idx, RCOFF[selRCIdx+1] - RCOFF[selRCIdx] - 1);
-    ctx.strokeStyle = '#ff5a1f'; ctx.globalAlpha = 0.95; ctx.lineWidth = 2.0 * DPR;
-    ctx.setLineDash([4*DPR, 3*DPR]);
-    ctx.beginPath(); ctx.arc(E.sx[fa], E.sy[fa], 11*DPR, 0, 2*Math.PI); ctx.stroke();
-    ctx.setLineDash([]);
-    star(ctx, E.sx[fa], E.sy[fa], 8*DPR, '#ff5a1f');
-    ctx.fillStyle = '#ff8a5c'; ctx.font = `bold ${10*DPR}px sans-serif`;
-    const lx = Math.min(P.W - 34*DPR, E.sx[fa] + 12*DPR);
-    ctx.fillText('OOD', lx, E.sy[fa] + 3*DPR);
-    ctx.globalAlpha = 1;
-  }
-  dot(ctx, E.sx[i], E.sy[i], fired ? '#ff5a1f' : col, 7);
-  VC.sync();
-  VC.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
-    + `<b>layout ${L}</b> · ${rcOkOf(L) ? '成功' : '失败'}　t=${t.toFixed(2)}s<br>`
-    + `异常分数 ${sc.toFixed(2)}　p=${p < 1e-3 ? p.toExponential(1) : p.toFixed(3)}<br>`
-    + (f.idx >= 0
-        ? `<span style="color:${fired ? '#ff7a18' : '#e0a33a'}">${fired ? '● 已触发 OOD' : '○ 首次触发 @' + f.t.toFixed(1) + 's'}</span>`
-        : `<span style="color:#7c8698">○ 未触发 OOD</span>`);
+  VB.cap.innerHTML = `<span class="chip" style="background:${fired ? '#ff5a1f' : col}"></span>${tag}<br>`
+    + `t=${t.toFixed(2)}s　已投影 ${i - a0 + 1}/${B.off[selEvIdx+1] - a0} 帧`
+    + (f0 && f0.idx >= 0
+        ? `<br><span style="color:${fired ? '#ff5a1f' : '#e0a33a'}">${fired ? '● 已触发 OOD' : '○ 首次触发 @' + f0.t.toFixed(1) + 's'}</span>`
+        : '');
 }
 
 function drawDynamic() {
   PA.ctx.drawImage(PA.bgCv, 0, 0);
   PB.ctx.drawImage(PB.bgCv, 0, 0);
-  if (PCC.W > 1) PCC.ctx.drawImage(PCC.bgCv, 0, 0);
   drawMarkerA();
   drawMarkerB();
-  drawMarkerC();
 }
 
-function draw() { drawStaticA(); drawStaticB(); drawStaticC(); drawDynamic(); }
+function draw() { drawStaticA(); drawStaticB(); drawDynamic(); }
 
 let playReq = null;
 function startLoop() {
@@ -865,7 +639,7 @@ function stopLoop() {
 
 // ---------- 交互 ----------
 let drag = null;
-for (const P of [PA, PB, PCC]) {
+for (const P of [PA, PB]) {
   P.el.addEventListener('mousedown', e => {
     drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey };
     P.el.classList.add('dragging'); e.preventDefault();
@@ -888,7 +662,7 @@ window.addEventListener('mousemove', e => {
   } else hover(e);
 });
 window.addEventListener('mouseup', () => {
-  drag = null; for (const P of [PA, PB, PCC]) P.el.classList.remove('dragging');
+  drag = null; PA.el.classList.remove('dragging'); PB.el.classList.remove('dragging');
 });
 
 const PRESETS = { iso: [-0.6, 0.5], p12: [0, 0], p23: [-Math.PI/2, 0], p13: [0, 1.45] };
@@ -939,8 +713,9 @@ function hover(e) {
   tip.style.top = (hit.py + 14) + 'px';
   if (P === PA) {
     tip.innerHTML = `训练 · ep${META.ep_names[EPI[best]]}　t=${TT[best].toFixed(2)}s<br>`
-      + `类 c${CLS[best]}　相位 ${(ANG[best]*180/Math.PI).toFixed(0)}°<br>`
-      + `不典型度 ${SC[best].toFixed(3)}`;
+      + (META.no_cls ? '' : `类 c${CLS[best]}　`)
+      + `相位 ${(ANG[best]*180/Math.PI).toFixed(0)}°<br>`
+      + (META.no_cls ? `异常分数 ${SC[best].toFixed(3)}` : `不典型度 ${SC[best].toFixed(3)}`);
   } else {
     const bb = batchSel === 2 ? 0 : batchSel;
     const B = BATCHES[bb];
@@ -953,13 +728,19 @@ function hover(e) {
 }
 
 // ---------- 侧栏 ----------
-document.getElementById('ttl').textContent = '潜空间浏览器';
+document.getElementById('ttl').textContent = META.pageTitle || '潜空间浏览器';
 document.getElementById('sub').textContent = META.title;
 document.getElementById('k_n').textContent = META.n.toLocaleString();
 document.getElementById('k_ep').textContent = META.n_ep;
 document.getElementById('k_var').textContent = META.pc_var.join(' / ') + ' %';
 
 const clsBox = document.getElementById('clss');
+if (META.no_cls) {
+  document.getElementById('clsbox').style.display = 'none';
+  const s = document.getElementById('cmode');
+  ['cls', 'ang'].forEach(v => { const o = s.querySelector(`option[value="${v}"]`); if (o) o.remove(); });
+  s.value = cmode;
+}
 clsList.forEach(c => {
   const row = document.createElement('label');
   row.className = 'row';
@@ -970,6 +751,16 @@ clsList.forEach(c => {
   clsBox.appendChild(row);
 });
 
+{
+  const elA = document.getElementById('ptitleA');
+  if (elA && META.paneATitle) elA.innerHTML = META.paneATitle;
+  if (!N2) {
+    const s = document.getElementById('batchsel');
+    Array.from(s.options).forEach(o => { if (o.value !== '0') o.remove(); });
+    if (META.batch0Label) s.options[0].textContent = META.batch0Label;
+    s.value = '0';
+  }
+}
 const epSel = document.getElementById('epsel');
 META.ep_names.forEach((name, i) => {
   const o = document.createElement('option');
@@ -1030,12 +821,12 @@ const VB = mkVideo({box:'vidB', title:'vtitleB', video:'vB', btn:'vbtnB',
                     seek:'vseekB', time:'vtimeB', cap:'vcapB', dir: META.ev_videoDir});
 
 let selEvIdx = -1;
-const VC = mkVideo({box:'vidC', title:'vtitleC', video:'vC', btn:'vbtnC',
-                    seek:'vseekC', time:'vtimeC', cap:'vcapC', dir: META.eval25VideoDir});
-let selRCIdx = -1;
 
 // 通过"训练集的 episode 序号"装载左栏视频
-function setVideo(epi) { VA.load(epi < 0 ? '' : META.ep_names[epi]); }
+function setVideo(epi) {
+  if (!META.videoDir) { document.getElementById('vid').classList.remove('on'); return; }
+  VA.load(epi < 0 ? '' : META.ep_names[epi]);
+}
 
 document.getElementById('dim').onchange = () => draw();
 document.getElementById('psize').oninput = () => draw();
@@ -1063,6 +854,7 @@ function fillRollouts(b) {
 function updatePaneTitle() {
   const el = document.getElementById('ptitleB');
   if (!el) return;
+  if (META.paneBTitle && batchSel === 0) { el.innerHTML = META.paneBTitle; return; }
   if (batchSel === 2) {
     el.innerHTML = `<b>评测轨迹 · 两批叠加</b> · 第一批 ${NE.toLocaleString()} 帧(白) + 第二批 ${N2.toLocaleString()} 帧(浅青)`;
   } else if (batchSel === 1) {
@@ -1098,45 +890,6 @@ evSel.onchange = () => {
 
 fillRollouts(0);
 updatePaneTitle();
-
-// ---------- 第三栏（路线 C）交互 ----------
-const rcSelEl = document.getElementById('rcsel');
-function fillRC() {
-  rcSelEl.innerHTML = '<option value="-1">（不播放）</option>';
-  RCLAY.forEach((L, i) => {
-    const f = rcFireOf(L);
-    const o = document.createElement('option');
-    o.value = i;
-    o.textContent = `layout ${L} · ${rcOkOf(L) ? '成功' : '失败'} · `
-      + (f.idx >= 0 ? `触发 @${f.t.toFixed(1)}s` : '未触发');
-    rcSelEl.appendChild(o);
-  });
-  rcSelEl.value = -1; selRCIdx = -1;
-}
-rcSelEl.onchange = () => {
-  selRCIdx = parseInt(rcSelEl.value, 10);
-  VC.load(selRCIdx < 0 ? '' : rcFileOf(RCLAY[selRCIdx]));
-  draw();
-};
-document.getElementById('rcOn').onchange = e => {
-  document.getElementById('paneC').classList.toggle('hide', !e.target.checked);
-  resize();
-};
-['rcDemo', 'rcFire', 'rcOnly'].forEach(id => { document.getElementById(id).onchange = () => draw(); });
-if (PCC.el) PCC.axisVar = META.rc_pcvar;
-{
-  const el = document.getElementById('ptitleC');
-  if (el && RCN) {
-    el.innerHTML = `<b>路线 C · π0 中间表征</b> · 演示 ${RCDN.toLocaleString()} 帧(灰) + `
-      + `${RCLAY.length} 条测试轨迹 · PC1-3 = ${(META.rc_pcvar || []).join(' / ')}%`
-      + `<span class="warn">自有坐标系</span>`;
-  }
-}
-fillRC();
-if (RCN) {                                   // 默认选中第一条触发轨迹，进页面即可看到视频+游标
-  const d = RCLAY.findIndex(L => rcFireOf(L).idx >= 0);
-  if (d >= 0) { rcSelEl.value = d; rcSelEl.onchange(); }
-}
 
 ['evShow', 'evLines', 'evOkOnly'].forEach(id => {
   document.getElementById(id).onchange = () => draw();
