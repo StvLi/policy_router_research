@@ -77,7 +77,7 @@ PC1–PC2 平面上点云排成一个明显的环（不是一个钟形/线形分
 
 ## 7. 可拖动交互版（推荐先用这个建立直觉）
 
-**`assets/latent_explorer.html`**（409 KB，单文件、零依赖、数据内嵌）——**双击用浏览器打开即可**，不需要服务器、不需要联网。
+**`assets/latent_explorer.html`**（940 KB，单文件、零依赖、数据内嵌）——**双击用浏览器打开即可**，不需要服务器、不需要联网。
 
 | 操作 | 效果 |
 |---|---|
@@ -102,6 +102,9 @@ PC1–PC2 平面上点云排成一个明显的环（不是一个钟形/线形分
 | **评测 rollout 播放** | 「评测 rollout」下拉选一个 rollout → 右栏右上角播它的 head 视频，**琥珀色游标 + 已走路径高亮**实时跟随；同样带进度条 |
 | **批次切换** | 「评测批次」下拉：第一批（T/T+Vnow，近似投影）/ 第二批 eval25（真实观测）/ 两批叠加；右栏标题会跟着变 |
 | **默认视角** | 改成沿 PC3 看（PC1-PC2 平面），因为这个视角下"闭环"最清楚 |
+| **第三栏：路线 C** | 最右一栏是 π0 中间表征空间（**自有 PCA 坐标系**，与左两栏不可混用）；演示点灰色，测试轨迹按布局着色；**橙星 = OOD 触发帧**（`layout N` 标注） |
+| **路线 C 轨迹播放** | 「路线 C」下拉选一局 → 栏内播出该局 head 视频，琥珀游标 + 已走路径高亮；游标过触发帧后变红、标 `OOD`，下方实时显示 `异常分数 / p` |
+| **只显示选中轨迹** | 默认开启：以该局质心为原点、自动缩放到画布 86%，其余局只留**空心小星**，从而既看清单条轨迹、又保留"失效点分布" |
 
 比静态图多出来的两件事：
 
@@ -111,12 +114,17 @@ PC1–PC2 平面上点云排成一个明显的环（不是一个钟形/线形分
 生成方式（需要 Python + numpy，不需要浏览器）：
 
 ```bash
-python3 scripts/make_latent_explorer.py --latent /tmp/routeA_task_latent.npz \
-        --out docs/assets/latent_explorer.html
+python3 scripts/make_latent_explorer.py --latent /tmp/routeA_latents3.npz \
+        --routeC-layer /tmp/routeC_layer.npz --out docs/assets/latent_explorer.html
 ```
 
 > 纯 Canvas 2D + 手写投影与深度排序。**静态层（点云/轴/轨迹）在视图变化时渲染到离屏画布并缓存**；
 > 播放视频时每帧只做一次 `drawImage` + 画游标，所以 10,366 个点也能流畅播。
+>
+> 第三栏的路线 C 图层由 `scripts/plot_routeC_fire.py` 顺手写出 `/tmp/routeC_layer.npz`（演示点 + 8 条测试轨迹 +
+> 触发帧），再由 `make_latent_explorer.py --routeC-layer` 内嵌。**三栏各自只用本空间的 PCA 基**：左两栏是整任务 VAE
+> 的 16 维潜空间，第三栏是 π0 的 2048 维中间表征，所以第三栏有独立尺度与原点（选中某局时以该局质心居中），
+> 不能拿两栏的距离互相比较。
 
 ### 7.0 右栏：评测轨迹（当前全部白点）
 

@@ -183,6 +183,18 @@ def main():
     fig.savefig(out2, dpi=150)
     print("写出", out2)
 
+    # ---- 额外落一份给交互页用的图层（演示点 + 评测轨迹 + 触发点）----
+    Zd = (de["E"] - mu) @ basis
+    np.savez("/tmp/routeC_layer.npz",
+             demo_z3=Zd.astype(np.float32), demo_ep=de["EP"], demo_t=(de["T"] / 25.0).astype(np.float32),
+             ev_z3=Z.astype(np.float32), ev_ep=EP, ev_t=(T / 25.0).astype(np.float32),
+             ev_score=S.astype(np.float32), ev_p=P.astype(np.float32),
+             fire=np.array([fire[e]["first_fire"] for e in eps], np.int32),
+             layouts=np.array(eps, np.int32),
+             official=np.array([off_meta.get(int(e), {}).get("official_score", np.nan) for e in eps], np.float32),
+             pc_var=ev_ratio[:3].astype(np.float32), n_demo=len(Zd))
+    print("写出 /tmp/routeC_layer.npz")
+
     json.dump(dict(pc_var=[round(float(v) * 100, 2) for v in ev_ratio[:3]],
                    n_eval=int(len(E)), n_demo=int(len(de["E"])),
                    fire={int(e): dict(first_fire=int(fire[e]["first_fire"]),

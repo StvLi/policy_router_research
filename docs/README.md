@@ -54,7 +54,7 @@
 | `06_open_questions.md` | Q1–Q20 待确认清单（含我的默认建议），按"能阻塞什么"排序 | 查阅 |
 | **`DECISIONS.md`** | **决策记录 D1–D7（含被推翻的旧说法）** | **每次改动前先看** |
 | **`G2_RESULT.md`** | 已完成的判决实验：子任务可分性探针（PASS，+63 pt） | 先读这个，它改变了风险评估 |
-| **`ROUTE_A_LATENT_PCA.md`** | **整任务 VAE + PCA：任务执行在潜空间里是一条闭环，类别是弧段；进度=相位**（含可拖动 3D 交互版 `assets/latent_explorer.html`） | 看可视化时读 |
+| **`ROUTE_A_LATENT_PCA.md`** | **整任务 VAE + PCA：任务执行在潜空间里是一条闭环，类别是弧段；进度=相位**（含可拖动 3D 交互版 `assets/latent_explorer.html`，第三栏即路线 C 的 8 条测试轨迹 + OOD 触发帧） | 看可视化时读 |
 | **`ROUTE_B_ATOMIC_SKILLS.md`** | 路线 B（跨任务原子技能）首轮结果与诊断 —— **已否决，负面结果留档** | 想复用该思路前读 |
 | **`PILOT_STORE_LAPTOP.md`** | **单任务试点：第 1/2/3 步全部跑通（平衡准确率 87.8%）；池化越激进越好；图像分支无贡献** | 判断技术路线是否落地 |
 | **`CAP_LATENCY_NOTE.md`** | CAP（GPT-6 Astra）延迟/成本取数：39.86 s/次、RoboDojo Hybrid 48% | 定效率主张前必读 |

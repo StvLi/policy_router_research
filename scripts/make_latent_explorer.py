@@ -29,11 +29,12 @@ def b64(arr, dtype):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--latent", default="/tmp/routeA_latents.npz")
+    ap.add_argument("--latent", default="/tmp/routeA_latents3.npz")
     ap.add_argument("--spec", default="/tmp/pilot_spec_local.json")
     ap.add_argument("--videos", default="videos/head")
     ap.add_argument("--eval-videos", default="videos/eval")
     ap.add_argument("--eval25-videos", default="videos/eval25")
+    ap.add_argument("--routeC-layer", default="/tmp/routeC_layer.npz")
     ap.add_argument("--out", default="docs/assets/latent_explorer.html")
     ap.add_argument("--title", default="收纳耳机与笔记本电脑 · 整任务 VAE 潜空间（PCA 3 维）")
     a = ap.parse_args()
@@ -138,6 +139,43 @@ def main():
                    rollouts=roll2, videoDir=a.eval25_videos)
         print(f"第二批 eval25：{len(E2Z)} 帧 / {len(roll2)} 集 (成功 {sum(1 for r in roll2 if r['ok'])})")
 
+    # ---- 路线 C：独立 PCA 坐标系（在演示集上拟合，评测集投影） ----
+    rc = dict(n=0, nd=0)
+    rc_meta = {}
+    if a.routeC_layer and os.path.exists(a.routeC_layer):
+        C = np.load(a.routeC_layer, allow_pickle=True)
+        DZ, EZ = C["demo_z3"].astype(np.float64), C["ev_z3"].astype(np.float64)
+        CE, CT, CS, CP = C["ev_ep"], C["ev_t"], C["ev_score"], C["ev_p"]
+        LAY, FIRE = C["layouts"], C["fire"]
+        allz = np.vstack([DZ, EZ])
+        cc, cs = allz.mean(0), float(np.abs(allz - allz.mean(0)).max()) or 1.0
+        DZn, EZn = (DZ - cc) / cs, (EZ - cc) / cs
+        # 逐集按时间排序 → 局部位次（供游标/触发帧定位）
+        SE, ST, SS, SP = [], [], [], []
+        offs, firemap = [0], {}
+        for L, f in zip(LAY.tolist(), FIRE.tolist()):
+            idx = np.where(CE == L)[0]
+            idx = idx[np.argsort(CT[idx])]
+            SE.append(EZn[idx]); ST.append(CT[idx])
+            SS.append(CS[idx]); SP.append(CP[idx])
+            offs.append(offs[-1] + len(idx))
+            firemap[str(int(L))] = dict(
+                idx=int(f), t=(round(float(ST[-1][f]), 2) if f >= 0 else None),
+                score=(round(float(SS[-1][f]), 3) if f >= 0 else None))
+        rc = dict(n=int(len(EZ)), nd=int(len(DZ)),
+                  demo=b64(DZn, np.float32), z=b64(np.vstack(SE), np.float32),
+                  t=b64(np.concatenate(ST), np.float32),
+                  ep=b64(np.repeat(LAY, [o2 - o1 for o1, o2 in zip(offs, offs[1:])]), np.int32),
+                  score=b64(np.concatenate(SS), np.float32),
+                  p=b64(np.concatenate(SP), np.float32),
+                  off=b64(np.array(offs, np.int32), np.int32))
+        rc_meta = dict(rc_layouts=[int(x) for x in LAY.tolist()], rc_fire=firemap,
+                       rc_pcvar=[round(float(v) * 100, 1) for v in C["pc_var"]],
+                       rc_official=[None if np.isnan(float(v)) else round(float(v), 2)
+                                    for v in C["official"]])
+        print(f"路线 C 图层：演示 {rc['nd']} 帧 + 评测 {rc['n']} 帧 / {len(LAY)} 局 "
+              f"(触发 {sum(1 for v in firemap.values() if v['idx'] >= 0)} 局)")
+
     meta = dict(title=a.title, videoDir=a.videos, segs=segs_by_ep,
                 n=int(N), n_ep=int(len(eps)),
                 ep_names=[f"ep{int(e):06d}" for e in eps],
@@ -148,11 +186,11 @@ def main():
                 ev_n=ev.get("n", 0), ev_rollouts=ev.get("rollouts", []),
                 ev2_n=ev2.get("n", 0), ev2_rollouts=ev2.get("rollouts", []),
                 ev_videoDir=a.eval_videos, eval25VideoDir=a.eval25_videos,
-                approx=approx)
+                approx=approx, **rc_meta)
 
     DATA = dict(pc=b64(Z3, np.float32), cls=b64(Y, np.uint8), ep=b64(EPI, np.int32),
                 off=b64(OFF, np.int32), t=b64(FIDX.astype(np.float32) / 25.0, np.float32),
-                score=b64(SCORE, np.float32), ang=b64(ang, np.float32), ev=ev, ev2=ev2)
+                score=b64(SCORE, np.float32), ang=b64(ang, np.float32), ev=ev, ev2=ev2, rc=rc)
 
     html = load_template().replace("__META__", json.dumps(meta, ensure_ascii=False)) \
                           .replace("__DATA__", json.dumps(DATA))
