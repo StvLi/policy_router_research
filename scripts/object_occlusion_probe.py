@@ -63,6 +63,29 @@ def occlude_box(bgr, box, dilate=5):
     return cv2.inpaint(bgr, m, 7, cv2.INPAINT_TELEA), m
 
 
+
+def retrieval_metrics(Feat_o, Feat_x, max_n=200):
+    """配对检索：遮挡（或对照）之后的帧，还能不能检索回它自己的原帧？
+
+    d_same = ‖f(原_i) − f(改_i)‖；d_nn = min_{j≠i} ‖f(原_i) − f(原_j)‖
+    frac_self = mean(d_same < d_nn)。若表征"看不见"这次改动，d_same≈0 → 接近 1.0。
+    与维度、噪声尺度无关，可跨表征比较。
+    """
+    n = min(len(Feat_o), max_n)
+    Fo, Fx = Feat_o[:n].astype(np.float64), Feat_x[:n].astype(np.float64)
+    d_same = np.linalg.norm(Fo - Fx, axis=1)
+    D = np.linalg.norm(Fo[:, None, :] - Fo[None, :, :], axis=2)
+    np.fill_diagonal(D, np.inf)
+    d_nn = D.min(1)
+    # 遮挡帧在"所有原帧"里的排名（1=最近）
+    Dx = np.linalg.norm(Fx[:, None, :] - Fo[None, :, :], axis=2)
+    rank = (Dx < Dx[np.arange(n), np.arange(n)][:, None]).sum(1) + 1
+    return dict(n=int(n), frac_self_retrieved=float((d_same < d_nn).mean()),
+                d_same_median=float(np.median(d_same)), d_nn_median=float(np.median(d_nn)),
+                ratio_median=float(np.median(d_same / (d_nn + 1e-12))),
+                self_rank_median=int(np.median(rank)), rank_pctl_median=float(np.median(rank / n)))
+
+
 def stage_masks(a):
     import cv2
     os.makedirs(a.out, exist_ok=True)
@@ -135,15 +158,31 @@ def stage_routeA(a):
                 out.append(pi.reshape(b, A.TILES).mean(1).cpu().numpy())
         return np.concatenate(out)
 
+    def latent(rgb):
+        """VAE 编码器输出的 16 维 mu（取三格平均）——与路线 C 的 embedding 同角色。"""
+        X = np.repeat(rgb[:, None, None], 3, axis=2)
+        out = []
+        with torch.no_grad():
+            for i in range(0, len(X), 256):
+                x = A.prep_img(X[i:i + 256], dev)
+                b = x.shape[0] // A.TILES
+                st = torch.zeros((b, A.SH, A.NS), device=dev)
+                mu, lv, zz, ri, rs = m(x, st, b)
+                out.append(mu.cpu().numpy())   # VAE 的 head 已按样本聚合，mu 就是 (B, 16)
+        return np.concatenate(out)
+
     po, pc = per_img(orig), per_img(occ)
     dlt = pc - po
     sub = po[:400]
     nat = float(np.median(np.abs(sub[:, None] - sub[None, :])))
-    res = dict(scorer="routeA_per_img", cls=int(c_main), n=int(len(po)),
+    Zo, Zc = latent(orig), latent(occ)
+    ret = retrieval_metrics(Zo, Zc)
+    res = dict(scorer="routeA", cls=int(c_main), n=int(len(po)),
                per_img_orig=float(np.median(po)), per_img_occ=float(np.median(pc)),
                delta_abs_median=float(np.median(np.abs(dlt))), natural_spread=nat,
                sensitivity=float(np.median(np.abs(dlt)) / (nat + 1e-12)),
-               frac_increase=float((dlt > 0).mean()))
+               frac_increase=float((dlt > 0).mean()),
+               latent_dim=int(Zo.shape[1]), retrieval=ret)
     print(json.dumps(res, ensure_ascii=False, indent=1))
     json.dump(res, open(os.path.join(os.path.dirname(a.cache), "sens_routeA.json"), "w"),
               ensure_ascii=False, indent=1)
@@ -196,7 +235,7 @@ def stage_routeC(a):
         if eps is None or ep in eps:
             picks.append((ep, f))
 
-    E_o, E_c = [], []
+    E_o, E_c, E_x = [], [], []
     for ep, f in picks:
         cap = cv2.VideoCapture(f)
         n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -217,23 +256,40 @@ def stage_routeC(a):
         if not po:
             print(f"  ep{ep:03d}: 0 帧命中", flush=True)
             continue
+        px, py = [], []
+        for fr in po:
+            h, w = fr.shape[:2]
+            b0, _ = red_box(fr)
+            if b0 is None:
+                px.append(fr); py.append(fr); continue
+            x, y, bw, bh = b0
+            # 对照：同尺寸框挪到背景（右下方空白桌面），不覆盖物体
+            cx = min(max(0, x + int(bw * 1.4)), w - bw)
+            cy = min(max(0, y + int(bh * 1.2)), h - bh)
+            ctrl, _ = occlude_box(fr, (cx, cy, bw, bh))
+            px.append(fr); py.append(ctrl)
         for i in range(0, len(po), a.batch):
             E_o.append(hidden_batch(po[i:i + a.batch]))
             E_c.append(hidden_batch(pc[i:i + a.batch]))
+            E_x.append(hidden_batch(py[i:i + a.batch]))
         print(f"  ep{ep:03d}: {len(po)} 帧", flush=True)
 
     if not E_o:
         raise SystemExit("没有命中帧")
-    Eo, Ec = np.concatenate(E_o), np.concatenate(E_c)
-    Vo, Vc = Eo.mean(1), Ec.mean(1)                 # (N,2048) 每帧均值池化
+    Eo, Ec, Ex = np.concatenate(E_o), np.concatenate(E_c), np.concatenate(E_x)
+    Vo, Vc, Vx = Eo.mean(1), Ec.mean(1), Ex.mean(1)   # (N,2048) 每帧均值池化
     d_obj = np.linalg.norm(Vo - Vc, axis=1)
-    sub = Vo[:min(300, len(Vo))]
+    sub = Vo[:min(200, len(Vo))]
     nat = float(np.median(np.linalg.norm(sub[:, None, :] - sub[None, :, :], axis=2)))
     dtok = np.linalg.norm(Eo - Ec, axis=2).mean(1)
     res = dict(scorer="routeC_hidden", n=int(len(Vo)),
                delta_median=float(np.median(d_obj)), token_delta_median=float(np.median(dtok)),
                natural_spread=nat, sensitivity=float(np.median(d_obj) / (nat + 1e-12)),
-               frac_increase=float((d_obj > 0).mean()))
+               frac_increase=float((d_obj > 0).mean()),
+               retrieval_object=retrieval_metrics(Vo, Vc),
+               retrieval_control=retrieval_metrics(Vo, Vx))
+    np.savez_compressed(os.path.join(a.out, "routeC_emb.npz"), Vo=Vo.astype(np.float32),
+                        Vc=Vc.astype(np.float32), Vx=Vx.astype(np.float32))
     print(json.dumps(res, ensure_ascii=False, indent=1))
     json.dump(res, open(os.path.join(a.out, "sens_routeC.json"), "w"),
               ensure_ascii=False, indent=1)
