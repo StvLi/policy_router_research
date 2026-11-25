@@ -38,6 +38,27 @@
 - **本体状态在 pi05 里不进 `embed_suffix`**：`embed_suffix` 的 `state_proj` 只在 `not self.pi05` 分支生效；pi05 的 `_preprocess_observation` 返回的是 `tokenized_prompt / tokenized_prompt_mask / state`，即**状态被离散化成 token 混在 prompt 里**。所以"本体 tokenizer 之后"的那段就是 **prompt token 段**，不是单独的 state 向量。
 - 环境：ws 上 `/srv/vla_shared/robodojo/RoboDojo/XPolicyLab/policy/Pi_05/openpi/.venv`（torch 2.10.0+cu128、transformers 4.53.2，与代码要求的 4.53.2 一致）；ckpt 在 `~/tmp_ws/floraU_eval/30000`（12 GB）。**6c 上没有 openpi 源码**（只有 1.5 TB 训练 ckpt），所以抽取要在 ws 做。
 
+### 2.1.1 冒烟已验证（2026-11-25，ws）
+
+`scripts/routeC_smoke_extract.py` 跑通，实测事实：
+
+| 项 | 实测 |
+|---|---|
+| 部署形态 | **JAX / flax nnx** 版 `Pi0`（`policy._is_pytorch_model=False`），不是 PyTorch → 不能用 hook，要用 nnx 的 eager 调用 |
+| 加载 | `config=pi05_base_aloha_full_sim_arx-x5_seed_0`，ckpt `~/tmp_ws/floraU_eval/30000`，norm stats `assets/arx_x5_sim`（不是 `1118`） |
+| SigLIP | `model.PaliGemma.img(img, train=False)` → **每路 256 token × 2048 维**，三路 768 |
+| 语言/本体 | `model.PaliGemma.llm(tokenized_prompt, method="embed")` → **(1, 200, 2048)**；200 是 padding 后的长度，`prefix_mask_len` 显示真实 token 约 74 |
+| prefix 总长 | **968 = 768 图像 + 200 prompt**；本体状态经 `TokenizePrompt(discrete_state_input=True)` 混进这 200 里 |
+| 确定性 | 同输入两次前向 max|Δ| = **0.0** |
+| 可区分性 | 图像左右翻转 → mean|Δ| = 7.8e-3；两路相机 token 差异 1.06e-2 |
+| 前向方式 | eager（未 jit），单帧可跑；批量抽取需自己加 batch 维 |
+
+三个会静默出错的坑（已踩）：
+
+1. **图像必须是 CHW**。`AlohaInputs` 负责 CHW→HWC，再 `ResizeImages` 到 224×224；给 HWC 会被转成 `(W, C, H)` 然后在 `Image.fromarray` 报 `(1, 1, 480)` 这种诡异形状。
+2. **transform 链会原地改写输入**，同一条 obs 第二次喂进去会失败 → 每次调用前 `copy.deepcopy`。
+3. **单条 obs 要手动加 batch 维**（线上 `Policy.infer` 内部会加），且必须是 `jnp.asarray`，否则 jaxtyping 报错。
+
 ### 2.2 抽取方式（不猜 obs 格式）
 
 不自己拼 observation（图像归一化、状态归一化、prompt 里状态 token 的编码方式任何一处错了都会静默学垃圾），而是：
@@ -90,8 +111,21 @@
 - 复用的部分：子任务聚类、两级拒识的定义、共形 p 值协议、评测数据（`data/eval25/`）。
 - 不复用的部分：图像/状态编码器（改为冻结 VLA 中间表示）。
 
-## 6. 复现入口（待实现）
+## 6. 复现入口
 
-- 抽特征：`scripts/routeC_extract_vla_emb.py`（待写，先在 ws 上对 1 集做冒烟）
-- VAE 训练与判定：待写，输入为 `.npz` 的 embedding 表
-- 归因尺：`scripts/probe_modality_attribution.py`（已可用，作为 E1 的对照基线）
+- **冒烟（已跑通）**：`scripts/routeC_smoke_extract.py`
+  ```bash
+  # ws 上
+  /srv/vla_shared/robodojo/RoboDojo/XPolicyLab/policy/Pi_05/openpi/.venv/bin/python \
+      routeC_smoke_extract.py --ep 12 \
+      --eval-dir "$(ls -d eval_result/RoboDojo/store_laptop_and_headphones/Pi_05/arx_x5/0_*rd25*/2026-11-24_22-29*/)"
+  ```
+- **批量抽特征**：`scripts/routeC_extract_vla_emb.py`（待写）
+- **VAE 训练与判定**：待写，输入为 `.npz` 的 embedding 表
+- **归因尺**：`scripts/probe_modality_attribution.py`（已可用，E1 的对照基线）
+
+## 7. 数据可用性提醒
+
+演示 clips（`flora/clips/ep00xxxx/`）在 **6c 的 NAS** 上，**ws 看不到** `/hdfs`。所以：
+- 用**评测视频**做 E1 遮挡实验：ws 本地就够（评测目录里有三路 mp4）。
+- 要在演示集上抽特征：先把该任务的 100 集 clips 从 6c 拷到 ws（估计 ~700 MB–2 GB），或者在 6c 上装 openpi。前者更省事。
