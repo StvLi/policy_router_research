@@ -117,7 +117,11 @@
     </div>
 
     <div class="grp" id="oodbox" style="display:none">
-      <div class="lbl">OOD 检出情况</div>
+      <div class="lbl">OOD 判据（滑窗 5 帧内 ≥3 帧 p &lt; 阈值）</div>
+      <div class="slider"><span>阈值 α</span><input type="range" id="alpha" min="1" max="200" step="1" value="50"></div>
+      <div class="kv" style="margin-bottom:6px"><span>当前 α</span><b id="alphav">0.050</b></div>
+      <label class="row"><input type="checkbox" id="onlyCurOOD"> 只显示当前轨迹的 OOD 样本</label>
+      <div class="lbl" style="margin-top:8px">OOD 检出情况</div>
       <div id="oodlist"></div>
     </div>
 
@@ -210,6 +214,7 @@ const EVZ = EV.n ? dec(EV.z, Float32Array) : new Float32Array(0);
 const EVT = EV.n ? dec(EV.t, Float32Array) : new Float32Array(0);
 const EVEP = EV.n ? dec(EV.ep, Int32Array) : new Int32Array(0);
 const EVOFF = EV.n ? dec(EV.off, Int32Array) : new Int32Array(1);
+const EVP = EV.p ? dec(EV.p, Float32Array) : null;   // 逐帧 p（可实时改阈值）
 const EVOK = EV.n ? dec(EV.ok, Uint8Array) : new Uint8Array(0);
 const EVCFG = EV.n ? dec(EV.cfg, Uint8Array) : new Uint8Array(0);
 const NE = EV.n || 0;
@@ -422,11 +427,39 @@ function star(ctx, x, y, r, col) {
   ctx.closePath(); ctx.fillStyle = col; ctx.fill();
 }
 
-// 评测栏的触发点（META.ev_fire[batch][rollout] = {idx, t}）；路线 A 无此字段 → 不画
-function batchFire(b, r) {
-  const f = (META.ev_fire || {})[String(b)];
-  return (f && f[String(r)]) || null;
+// 评测栏的触发点：优先用逐帧 p 现算（可随阈值滑块变化），否则退回 META.ev_fire
+const FIRE_WIN = 5, FIRE_NEED = 3;
+let alpha = 0.05;
+const fireCache = {};                     // "batch:rollout" → {idx, t, pmin}
+function fireRule(p, lo, hi, a) {
+  for (let i = lo; i + FIRE_WIN <= hi; i++) {
+    let c = 0, mn = 1;
+    for (let j = i; j < i + FIRE_WIN; j++) { if (p[j] < a) c++; mn = Math.min(mn, p[j]); }
+    if (c >= FIRE_NEED) return { idx: i - lo, pmin: mn };
+  }
+  return { idx: -1, pmin: null };
 }
+function batchFire(b, r) {
+  const key = `${b}:${r}`;
+  if (fireCache[key] !== undefined) return fireCache[key];
+  const B = BATCHES[b];
+  let out = null;
+  if (EVP && B && B.n && B.off && r + 1 < B.off.length) {
+    const lo = B.off[r], hi = B.off[r + 1];
+    if (hi - lo >= FIRE_WIN) {
+      const f = fireRule(EVP, lo, hi, alpha);
+      out = (f.idx >= 0)
+        ? { idx: f.idx, t: B.t[lo + f.idx], pmin: f.pmin }
+        : { idx: -1, t: null, pmin: null };
+    }
+  } else {
+    const f = (META.ev_fire || {})[String(b)];
+    out = (f && f[String(r)]) || null;
+  }
+  fireCache[key] = out;
+  return out;
+}
+function resetFire() { for (const k in fireCache) delete fireCache[k]; }
 
 
 function sampleAtTime(epi, t) {
@@ -565,6 +598,7 @@ function drawStaticB() {
       if (!f || f.idx < 0) continue;
       const i2 = B.off[r] + Math.min(f.idx, B.off[r+1] - B.off[r] - 1);
       const sel = (b === batchSel && r === selEvIdx);
+      if (document.getElementById('onlyCurOOD').checked && !sel) continue;
       const R = (sel ? 11 : 9) * DPR;
       g.globalAlpha = sel ? 1 : 0.92;
       g.fillStyle = '#0b0d12';                       // 深色光晕，压住底下的白点
@@ -576,7 +610,7 @@ function drawStaticB() {
       star(g, B.sx[i2], B.sy[i2], R, '#ff7a18');
       star(g, B.sx[i2], B.sy[i2], R * 0.55, '#ffd08a');
       const ro2 = (B.rollouts || [])[r] || {};
-      const lab = `OOD ${ro2.layout !== undefined ? ro2.layout : r}`;
+      const lab = `首OOD ${ro2.layout !== undefined ? ro2.layout : r}`;
       if (!sel) { g.globalAlpha = 1; continue; }
       g.font = `bold ${10*DPR}px sans-serif`;
       const tw = g.measureText(lab).width;
@@ -613,6 +647,8 @@ function drawMarkerB() {
 
   const a0 = B.off[selEvIdx];
   const fPrev = batchFire(batchSel, selEvIdx);
+  const pNow = EVP ? EVP[i] : null;
+  const isNow = (pNow !== null && pNow < alpha);
   const fIdxAbs = (fPrev && fPrev.idx >= 0) ? a0 + Math.min(fPrev.idx, B.off[selEvIdx+1] - a0 - 1) : -1;
   for (let seg = 0; seg < 2; seg++) {           // 0 = 触发前（琥珀），1 = 触发后（红）
     const lo = seg === 0 ? a0 : Math.max(a0, fIdxAbs);
@@ -639,17 +675,22 @@ function drawMarkerB() {
     ctx.fillText('OOD', Math.min(P.W - 34*DPR, B.sx[fi] + 13*DPR), B.sy[fi] + 3*DPR);
     ctx.globalAlpha = 1;
   }
-  dot(ctx, B.sx[i], B.sy[i], fired ? '#ff5a1f' : col, 7);
+  dot(ctx, B.sx[i], B.sy[i], isNow ? '#ff2d55' : col, 7);
   VB.sync();
   const ro = (B.rollouts || [])[selEvIdx] || {};
   const tag = batchSel === 1
     ? `eval25 #${selEvIdx} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'} · score ${(ro.score||0).toFixed(1)}`
     : `#${selEvIdx} ${ro.cfg || ''} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'}`;
-  VB.cap.innerHTML = `<span class="chip" style="background:${fired ? '#ff5a1f' : col}"></span>${tag}<br>`
+  const curTxt = (pNow === null)
+    ? ''
+    : `<br><span style="color:${isNow ? '#ff2d55' : '#7fd1a8'}">${isNow ? '● 当前帧 OOD' : '○ 当前帧正常'}　p=${pNow.toFixed(3)}</span>`;
+  const firstTxt = (f0 && f0.idx >= 0)
+    ? `<span style="color:${fired ? '#ff5a1f' : '#e0a33a'}">${fired ? '● 已过首OOD' : '○ 首OOD 未到'}</span>`
+      + `　首OOD ${f0.t.toFixed(1)}s（窗内 3/5，pmin ${f0.pmin !== undefined && f0.pmin !== null ? f0.pmin.toFixed(3) : '—'}）`
+    : `<span style="color:#7c8698">○ 全程未触发（α=${alpha.toFixed(3)}）</span>`;
+  VB.cap.innerHTML = `<span class="chip" style="background:${isNow ? '#ff2d55' : col}"></span>${tag}<br>`
     + `t=${t.toFixed(2)}s　已投影 ${i - a0 + 1}/${B.off[selEvIdx+1] - a0} 帧`
-    + (f0 && f0.idx >= 0
-        ? `<br><span style="color:${fired ? '#ff5a1f' : '#e0a33a'}">${fired ? '● 已触发 OOD' : '○ 首次触发 @' + f0.t.toFixed(1) + 's'}</span>`
-        : '');
+    + curTxt + `<br>` + firstTxt;
 }
 
 function drawDynamic() {
@@ -951,39 +992,62 @@ evSel.onchange = () => {
 
 fillRollouts(0);
 updatePaneTitle();
-{
+function buildOODList() {
   const box = document.getElementById('oodbox');
-  const fire0 = (META.ev_fire || {})['0'];
-  if (box && fire0) {
-    box.style.display = '';
-    const list = document.getElementById('oodlist');
-    const rolls = BATCHES[0].rollouts || [];
-    let nHit = 0, nFail = 0;
-    rolls.forEach((r, i) => {
-      if (!r.ok) nFail++;
-      const f = fire0[String(i)];
-      const hit = !!(f && f.idx >= 0);
-      if (hit) nHit++;
-      const row = document.createElement('div');
-      row.className = 'oodrow';
-      row.dataset.idx = i;
-      row.innerHTML = `<span style="width:8px;height:8px;border-radius:2px;background:${hit ? '#ff7a18' : '#39404e'}"></span>`
-        + `<span>layout ${r.layout}</span><span style="color:${r.ok ? '#7fd1a8' : '#8b95a8'}">${r.ok ? '成功' : '失败'}</span>`
-        + `<span class="st ${hit ? 'hit' : 'miss'}">${hit ? '⚑ ' + f.t.toFixed(1) + 's' : '○ 未检出'}</span>`;
-      row.onclick = () => {
-        const s = document.getElementById('evsel');
-        s.value = String(i); s.onchange();
-        Array.from(list.children).forEach(c => c.classList.toggle('on', +c.dataset.idx === i));
-      };
-      list.appendChild(row);
-    });
-    const sum = document.createElement('div');
-    sum.className = 'kv';
-    sum.style.marginTop = '4px';
-    sum.innerHTML = `<span>失败 ${nFail} 局中检出</span><b>${nHit} / ${nFail}</b>`;
-    list.appendChild(sum);
-  }
+  if (!box) return;
+  const has = (META.ev_fire && META.ev_fire['0']) || EVP;
+  if (!has || !(BATCHES[0].rollouts || []).length) return;
+  box.style.display = '';
+  const list = document.getElementById('oodlist');
+  list.innerHTML = '';
+  const rolls = BATCHES[0].rollouts || [];
+  let nHit = 0, nFail = 0, nOk = 0;
+  rolls.forEach((r, i) => {
+    if (!r.ok) nFail++;
+    const f = batchFire(0, i);
+    const hit = !!(f && f.idx >= 0);
+    if (hit) { nHit++; if (r.ok) nOk++; }
+    const row = document.createElement('div');
+    row.className = 'oodrow';
+    row.dataset.idx = i;
+    row.innerHTML = `<span style="width:8px;height:8px;border-radius:2px;background:${hit ? '#ff7a18' : '#39404e'}"></span>`
+      + `<span>layout ${r.layout}</span><span style="color:${r.ok ? '#7fd1a8' : '#8b95a8'}">${r.ok ? '成功' : '失败'}</span>`
+      + `<span class="st ${hit ? 'hit' : 'miss'}">${hit ? '⚑ ' + f.t.toFixed(1) + 's' : '○ 未检出'}</span>`;
+    row.onclick = () => {
+      const s = document.getElementById('evsel');
+      s.value = String(i); s.onchange();
+    };
+    list.appendChild(row);
+  });
+  const sum = document.createElement('div');
+  sum.className = 'kv';
+  sum.style.marginTop = '4px';
+  sum.innerHTML = `<span>失败 ${nFail} 局中检出</span><b>${nHit} / ${nFail}</b>`;
+  list.appendChild(sum);
+  const sum2 = document.createElement('div');
+  sum2.className = 'kv';
+  sum2.innerHTML = `<span>成功 ${rolls.length - nFail} 局中误报</span><b>${nOk}</b>`;
+  list.appendChild(sum2);
+  Array.from(list.querySelectorAll('.oodrow'))
+       .forEach(c => c.classList.toggle('on', +c.dataset.idx === selEvIdx));
 }
+
+// 阈值滑块：重算全部触发点 → 重画星标、重建清单
+{
+  const sl = document.getElementById('alpha');
+  const lab = document.getElementById('alphav');
+  const apply = () => {
+    alpha = Math.max(0.001, parseInt(sl.value, 10) / 1000);   // 1..200 → 0.001..0.200
+    lab.textContent = alpha.toFixed(3);
+    resetFire();
+    buildOODList();
+    draw();                     // 整屏重画：底图与游标必须同一套触发点
+  };
+  if (sl) { sl.oninput = apply; sl.onchange = apply; }
+  const only = document.getElementById('onlyCurOOD');
+  if (only) only.onchange = () => { draw(); };
+}
+buildOODList();
 if (META.autoplayFirstFire) {
   const f = (META.ev_fire || {})['0'] || {};
   const k = Object.keys(f).find(j => f[j] && f[j].idx >= 0);

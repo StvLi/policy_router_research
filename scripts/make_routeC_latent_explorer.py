@@ -113,6 +113,7 @@ def main():
     ord_e2 = np.lexsort((Te, np.array([sorted(set(EPe.tolist())).index(x) for x in EPe])))
     Zev, EPe_s, Te_s = Zev[ord_e2], EPe[ord_e2], Te[ord_e2]
     okf = np.array([next(r["ok"] for r in rollouts if r["layout"] == ep) for ep in EPe_s], np.uint8)
+    P_s = P_e[ord_e2]
     cfgs = np.zeros(len(EPe_s), np.uint8)
 
     META = dict(
@@ -151,7 +152,8 @@ def main():
         ev=dict(n=int(len(Zev)), z=b64(Zev, np.float32),
                 t=b64(Te_s.astype(np.float32) / 25.0, np.float32),
                 ep=b64(np.array([sorted(set(EPe.tolist())).index(x) for x in EPe_s], np.int32), np.int32),
-                off=b64(offs_e, np.int32), ok=b64(okf, np.uint8), cfg=b64(cfgs, np.uint8)),
+                off=b64(offs_e, np.int32), ok=b64(okf, np.uint8), cfg=b64(cfgs, np.uint8),
+                p=b64(P_s, np.float32)),
         ev2=dict(n=0),
     )
 
