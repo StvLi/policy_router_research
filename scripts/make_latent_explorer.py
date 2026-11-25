@@ -33,6 +33,7 @@ def main():
     ap.add_argument("--spec", default="/tmp/pilot_spec_local.json")
     ap.add_argument("--videos", default="videos/head")
     ap.add_argument("--eval-videos", default="videos/eval")
+    ap.add_argument("--eval25-videos", default="videos/eval25")
     ap.add_argument("--out", default="docs/assets/latent_explorer.html")
     ap.add_argument("--title", default="收纳耳机与笔记本电脑 · 整任务 VAE 潜空间（PCA 3 维）")
     a = ap.parse_args()
@@ -111,6 +112,32 @@ def main():
         print(f"评测轨迹：{len(EZ)} 帧 / {len(rollouts)} 个 rollout "
               f"(成功 {sum(1 for x in rollouts if x['ok'])})")
 
+    # ---- 第二批：data/eval25（真实观测）----
+    ev2 = dict(n=0)
+    if "ev2_z3" in keys and len(z["ev2_z3"]):
+        E2Z, E2T, E2EP = z["ev2_z3"], z["ev2_t"], z["ev2_ep"]
+        E2OK, E2LAY, E2SC = z["ev2_ok"].astype(np.uint8), z["ev2_layout"], z["ev2_score"]
+        o2 = np.lexsort((E2T, E2EP))
+        E2Z, E2T, E2EP, E2OK, E2LAY, E2SC = (E2Z[o2], E2T[o2], E2EP[o2], E2OK[o2], E2LAY[o2], E2SC[o2])
+        remap2 = {int(v): i for i, v in enumerate(np.unique(E2EP))}
+        E2P = np.array([remap2[int(v)] for v in E2EP], np.int32)
+        OFF2 = np.zeros(int(E2P.max()) + 2, np.int32)
+        for i, c in enumerate(np.bincount(E2P, minlength=int(E2P.max()) + 1)):
+            OFF2[i + 1] = OFF2[i] + c
+        roll2 = []
+        for r in range(int(E2P.max()) + 1):
+            m = E2P == r
+            if not m.any():
+                continue
+            lay, ok = int(E2LAY[m][0]), bool(E2OK[m][0])
+            roll2.append(dict(layout=lay, ok=ok, score=float(E2SC[m][0]), n=int(m.sum()),
+                              file=f"episode_{lay:07d}_cam_head_{'success' if ok else 'fail'}"))
+        ev2 = dict(n=int(len(E2Z)), z=b64(E2Z, np.float32), t=b64(E2T, np.float32),
+                   ep=b64(E2P, np.int32), off=b64(OFF2, np.int32),
+                   ok=b64(E2OK, np.uint8), layout=b64(E2LAY.astype(np.int32), np.int32),
+                   rollouts=roll2, videoDir=a.eval25_videos)
+        print(f"第二批 eval25：{len(E2Z)} 帧 / {len(roll2)} 集 (成功 {sum(1 for r in roll2 if r['ok'])})")
+
     meta = dict(title=a.title, videoDir=a.videos, segs=segs_by_ep,
                 n=int(N), n_ep=int(len(eps)),
                 ep_names=[f"ep{int(e):06d}" for e in eps],
@@ -119,11 +146,13 @@ def main():
                 t_max=float(FIDX.max() / 25.0),
                 cls_counts={int(c): int((Y == c).sum()) for c in np.unique(Y)},
                 ev_n=ev.get("n", 0), ev_rollouts=ev.get("rollouts", []),
-                ev_videoDir=a.eval_videos, approx=approx)
+                ev2_n=ev2.get("n", 0), ev2_rollouts=ev2.get("rollouts", []),
+                ev_videoDir=a.eval_videos, eval25VideoDir=a.eval25_videos,
+                approx=approx)
 
     DATA = dict(pc=b64(Z3, np.float32), cls=b64(Y, np.uint8), ep=b64(EPI, np.int32),
                 off=b64(OFF, np.int32), t=b64(FIDX.astype(np.float32) / 25.0, np.float32),
-                score=b64(SCORE, np.float32), ang=b64(ang, np.float32), ev=ev)
+                score=b64(SCORE, np.float32), ang=b64(ang, np.float32), ev=ev, ev2=ev2)
 
     html = load_template().replace("__META__", json.dumps(meta, ensure_ascii=False)) \
                           .replace("__DATA__", json.dumps(DATA))

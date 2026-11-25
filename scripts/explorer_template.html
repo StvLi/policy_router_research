@@ -96,7 +96,13 @@
     </div>
 
     <div class="grp">
-      <div class="lbl">评测 rollout（右）</div>
+      <div class="lbl">评测批次（右）</div>
+      <select id="batchsel">
+        <option value="0">第一批 · T / T+Vnow（50 集）</option>
+        <option value="1">第二批 · eval25（25 集）</option>
+        <option value="2">两批叠加</option>
+      </select>
+      <div class="lbl" style="margin-top:8px">rollout（播放/高亮）</div>
       <select id="evsel"><option value="-1">（不播放）</option></select>
     </div>
 
@@ -140,8 +146,7 @@
       <canvas id="cv"></canvas>
     </div>
     <div class="pane" id="paneB">
-      <div class="ptitle"><b>评测轨迹 · VLM-VLA 联合测试</b> · 7,828 帧 / 50 个 rollout
-        <span class="warn">近似投影（评测未存关节状态）</span></div>
+      <div class="ptitle" id="ptitleB"><b>评测轨迹</b></div>
       <canvas id="cv2"></canvas>
     </div>
     <div id="vid">
@@ -192,6 +197,23 @@ const EVOFF = EV.n ? dec(EV.off, Int32Array) : new Int32Array(1);
 const EVOK = EV.n ? dec(EV.ok, Uint8Array) : new Uint8Array(0);
 const EVCFG = EV.n ? dec(EV.cfg, Uint8Array) : new Uint8Array(0);
 const NE = EV.n || 0;
+
+// 第二批（data/eval25，真实观测）
+const E2 = DATA.ev2 || {};
+const E2Z = E2.n ? dec(E2.z, Float32Array) : new Float32Array(0);
+const E2T = E2.n ? dec(E2.t, Float32Array) : new Float32Array(0);
+const E2EP = E2.n ? dec(E2.ep, Int32Array) : new Int32Array(0);
+const E2OFF = E2.n ? dec(E2.off, Int32Array) : new Int32Array(1);
+const E2OK = E2.n ? dec(E2.ok, Uint8Array) : new Uint8Array(0);
+const N2 = E2.n || 0;
+
+const BATCHES = [
+  {name: '第一批', n: NE, z: EVZ, t: EVT, ep: EVEP, off: EVOFF, ok: EVOK,
+   rollouts: META.ev_rollouts || [], dir: META.ev_videoDir, tint: '#f2f6fc', label: b => `#${b} ${(META.ev_rollouts[b]||{}).cfg||''} · layout ${(META.ev_rollouts[b]||{}).layout} · ${(META.ev_rollouts[b]||{}).ok?'成功':'失败'}`},
+  {name: '第二批', n: N2, z: E2Z, t: E2T, ep: E2EP, off: E2OFF, ok: E2OK,
+   rollouts: META.ev2_rollouts || [], dir: META.eval25VideoDir, tint: '#c9f0ff', label: b => { const r=(META.ev2_rollouts[b]||{}); return `#${b} layout ${r.layout} · ${r.ok?'成功':'失败'} · score ${(r.score||0).toFixed(1)}`; }},
+];
+let batchSel = 0;          // 0/1 = 单批；2 = 叠加
 
 const PAL = ['#4c9be8','#f0932b','#2ecc71','#e74c3c','#9b59b6','#1abc9c','#e67e22','#95a5a6',
              '#3498db','#e84393','#00b894','#fdcb6e','#6c5ce7','#d63031','#00cec9','#b2bec3'];
@@ -364,55 +386,19 @@ function drawStaticA() {
   document.getElementById('k_shown').textContent = shown.toLocaleString();
 }
 
-// ---------- 评测栏（本阶段全部白点） ----------
-function drawStaticB() {
-  const P = PB;
-  const cam = projectAll(P, EVZ);
-  const g = P.bg;
-  g.clearRect(0, 0, P.W, P.H); g.fillStyle = '#0b0d12'; g.fillRect(0, 0, P.W, P.H);
-  drawAxes(P, g, cam);
-  if (!NE) { g.fillStyle = '#54607a'; g.font = `${13*DPR}px sans-serif`;
-             g.fillText('（无评测数据）', 20*DPR, 40*DPR); return; }
-
-  const showPts = document.getElementById('evShow').checked;
-  const showLines = document.getElementById('evLines').checked;
-  const okOnly = document.getElementById('evOkOnly').checked;
-
-  // 轨迹连线（淡白）
-  if (showLines) {
-    g.strokeStyle = '#dfe7f3'; g.globalAlpha = 0.10; g.lineWidth = 1.0 * DPR;
-    for (let r = 0; r + 1 < EVOFF.length; r++) {
-      const a0 = EVOFF[r], a1 = EVOFF[r + 1];
-      if (a1 - a0 < 2) continue;
-      g.beginPath();
-      let started = false;
-      for (let i = a0; i < a1; i++) {
-        if (okOnly && !EVOK[i]) continue;
-        if (!started) { g.moveTo(P.sx[i], P.sy[i]); started = true; } else g.lineTo(P.sx[i], P.sy[i]);
-      }
-      g.stroke();
-    }
-    g.globalAlpha = 1;
-  }
-
-  if (showPts) {
-    const base = parseFloat(document.getElementById('psize').value) * 0.85;
-    const ord = new Array(NE); for (let i = 0; i < NE; i++) ord[i] = i;
-    ord.sort((a, b) => P.zrot[a] - P.zrot[b]);
-    for (let k = 0; k < NE; k++) {
-      const i = ord[k];
-      if (okOnly && !EVOK[i]) continue;
-      const s = base * P.ssz[i] * DPR;
-      g.fillStyle = '#f2f6fc'; g.globalAlpha = 0.38;
-      g.fillRect(P.sx[i] - s/2, P.sy[i] - s/2, s, s);
-    }
-    g.globalAlpha = 1;
-  }
+// ---------- 动态层：训练栏游标 ----------
+function dot(ctx, x, y, col, r) {
+  r *= DPR;
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = col; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * DPR; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 7);
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6 * DPR; ctx.stroke();
+  ctx.globalAlpha = 1;
 }
 
-// ---------- 动态层 ----------
 function sampleAtTime(epi, t) {
-  const a0 = OFF[epi], a1 = OFF[epi+1];
+  const a0 = OFF[epi], a1 = OFF[epi + 1];
   if (a1 <= a0) return -1;
   let lo = a0, hi = a1 - 1;
   while (lo < hi) { const mid = (lo + hi) >> 1; if (TT[mid] < t) lo = mid + 1; else hi = mid; }
@@ -420,6 +406,7 @@ function sampleAtTime(epi, t) {
   if (i > a0 && Math.abs(TT[i-1] - t) < Math.abs(TT[i] - t)) i--;
   return i;
 }
+
 function segAt(epi, t) {
   const segs = (META.segs && META.segs[String(epi)]) || [];
   for (const s of segs) if (t >= s[0] && t < s[1]) return s;
@@ -427,9 +414,9 @@ function segAt(epi, t) {
 }
 
 function drawMarkerA() {
-  if (selEpIdx < 0) return;
+  if (selEpIdx < 0 || VA.el.readyState < 1) return;   // 视频未就绪则不画
   const P = PA, ctx = P.ctx;
-  const t = (VA.el.readyState > 0) ? VA.el.currentTime : 0;
+  const t = VA.el.currentTime;
   const i = sampleAtTime(selEpIdx, t);
   if (i < 0) return;
   const seg = segAt(selEpIdx, t);
@@ -446,54 +433,133 @@ function drawMarkerA() {
 
   dot(ctx, P.sx[i], P.sy[i], col, 7);
   VA.sync();
-  if (seg) VA.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
-    + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+  if (seg) {
+    VA.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
+      + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+  }
 }
 
-function dot(ctx, x, y, col, r) {
-  r *= DPR;
-  ctx.globalAlpha = 1;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = col; ctx.fill();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * DPR; ctx.stroke();
-  ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 7);
-  ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6 * DPR; ctx.stroke();
-  ctx.globalAlpha = 1;
+// ---------- 评测栏（白点；两批分开） ----------
+function ensureEv(b) {
+  const B = BATCHES[b];
+  if (B.sx) return B;
+  B.sx = new Float32Array(B.n); B.sy = new Float32Array(B.n);
+  B.ssz = new Float32Array(B.n); B.zrot = new Float32Array(B.n);
+  return B;
 }
 
-function sampleAtTimeEv(ridx, t) {
-  const a0 = EVOFF[ridx], a1 = EVOFF[ridx + 1];
+function projectEv(B, cam) {
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
+  for (let i = 0; i < B.n; i++) {
+    const x = B.z[3*i], y = B.z[3*i+1], z = B.z[3*i+2];
+    const x1 = cyw * x + syw * z;
+    const z1 = -syw * x + cyw * z;
+    const y2 = cp * y - sp * z1;
+    const z2 = sp * y + cp * z1;
+    B.zrot[i] = z2;
+    const f = fov / (fov + z2 * ext * 1.2);
+    B.sx[i] = cx + x1 * scale0 * f;
+    B.sy[i] = cyy - y2 * scale0 * f;
+    B.ssz[i] = f;
+  }
+}
+
+function activeBatches() {
+  return batchSel === 2 ? [0, 1] : [batchSel];
+}
+
+function drawStaticB() {
+  const P = PB, g = P.bg;
+  const cam = updateCam(P);
+  for (const b of activeBatches()) if (BATCHES[b].n) projectEv(ensureEv(b), cam);
+
+  g.clearRect(0, 0, P.W, P.H); g.fillStyle = '#0b0d12'; g.fillRect(0, 0, P.W, P.H);
+  drawAxes(P, g, cam);
+
+  if (!NE && !N2) {
+    g.fillStyle = '#54607a'; g.font = `${13*DPR}px sans-serif`;
+    g.fillText('（无评测数据）', 20*DPR, 40*DPR); return;
+  }
+  const showPts = document.getElementById('evShow').checked;
+  const showLines = document.getElementById('evLines').checked;
+  const okOnly = document.getElementById('evOkOnly').checked;
+  const base = parseFloat(document.getElementById('psize').value) * 0.85;
+
+  for (const b of activeBatches()) {
+    const B = BATCHES[b];
+    if (!B.n) continue;
+    const dense = (batchSel !== 2);
+
+    if (showLines) {
+      g.strokeStyle = B.tint; g.globalAlpha = dense ? 0.10 : 0.06; g.lineWidth = 1.0 * DPR;
+      for (let r = 0; r + 1 < B.off.length; r++) {
+        const a0 = B.off[r], a1 = B.off[r + 1];
+        if (a1 - a0 < 2) continue;
+        g.beginPath();
+        let started = false;
+        for (let i = a0; i < a1; i++) {
+          if (okOnly && !B.ok[i]) continue;
+          if (!started) { g.moveTo(B.sx[i], B.sy[i]); started = true; } else g.lineTo(B.sx[i], B.sy[i]);
+        }
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+
+    if (showPts) {
+      const ord = new Array(B.n); for (let i = 0; i < B.n; i++) ord[i] = i;
+      ord.sort((a2, b2) => B.zrot[a2] - B.zrot[b2]);
+      for (let k = 0; k < B.n; k++) {
+        const i = ord[k];
+        if (okOnly && !B.ok[i]) continue;
+        const s = base * B.ssz[i] * DPR;
+        g.fillStyle = B.tint; g.globalAlpha = (b === 1) ? 0.45 : 0.38;
+        g.fillRect(B.sx[i] - s/2, B.sy[i] - s/2, s, s);
+      }
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+function sampleAtTimeEv(b, ridx, t) {
+  const B = BATCHES[b];
+  const a0 = B.off[ridx], a1 = B.off[ridx + 1];
   if (a1 <= a0) return -1;
   let lo = a0, hi = a1 - 1;
-  while (lo < hi) { const mid = (lo + hi) >> 1; if (EVT[mid] < t) lo = mid + 1; else hi = mid; }
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (B.t[mid] < t) lo = mid + 1; else hi = mid; }
   let i = lo;
-  if (i > a0 && Math.abs(EVT[i-1] - t) < Math.abs(EVT[i] - t)) i--;
+  if (i > a0 && Math.abs(B.t[i-1] - t) < Math.abs(B.t[i] - t)) i--;
   return i;
 }
 
 function drawMarkerB() {
-  if (selEvIdx < 0 || !NE) return;
+  if (selEvIdx < 0 || batchSel === 2) return;         // 叠加模式下不画游标
+  if (VB.el.readyState < 1) return;                    // 视频没就绪就不画
+  const B = ensureEv(batchSel);
+  if (!B || !B.n) return;
   const P = PB, ctx = P.ctx;
-  const t = (VB.el.readyState > 0) ? VB.el.currentTime : 0;
-  const i = sampleAtTimeEv(selEvIdx, t);
+  const t = VB.el.currentTime;
+  const i = sampleAtTimeEv(batchSel, selEvIdx, t);
   if (i < 0) return;
-  const ro = (META.ev_rollouts || [])[selEvIdx] || {};
-  const col = '#ffb648';                       // 白点云上用它才看得见
+  const col = '#ffb648';
 
-  // 已走过的路径加亮
-  const a0 = EVOFF[selEvIdx];
-  ctx.strokeStyle = '#ffb648'; ctx.globalAlpha = 0.85; ctx.lineWidth = 2.4 * DPR;
+  const a0 = B.off[selEvIdx];
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.85; ctx.lineWidth = 2.4 * DPR;
   ctx.beginPath();
   let started = false;
   for (let j = a0; j <= i; j++) {
-    if (!started) { ctx.moveTo(P.sx[j], P.sy[j]); started = true; } else ctx.lineTo(P.sx[j], P.sy[j]);
+    if (!started) { ctx.moveTo(B.sx[j], B.sy[j]); started = true; } else ctx.lineTo(B.sx[j], B.sy[j]);
   }
   ctx.stroke();
 
-  dot(ctx, P.sx[i], P.sy[i], col, 7);
+  dot(ctx, B.sx[i], B.sy[i], col, 7);
   VB.sync();
-  const tag = `#${selEvIdx} ${ro.cfg || '?'} · layout ${ro.layout || '?'} · ${ro.ok ? '成功' : '失败'}`;
-  VB.cap.innerHTML = `<span class="chip" style="background:#ffb648"></span>${tag}<br>`
-    + `t=${t.toFixed(2)}s　已投影 ${i - a0 + 1}/${a0 >= 0 ? EVOFF[selEvIdx+1] - a0 : 0} 帧`;
+  const ro = (B.rollouts || [])[selEvIdx] || {};
+  const tag = batchSel === 1
+    ? `eval25 #${selEvIdx} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'} · score ${(ro.score||0).toFixed(1)}`
+    : `#${selEvIdx} ${ro.cfg || ''} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'}`;
+  VB.cap.innerHTML = `<span class="chip" style="background:${col}"></span>${tag}<br>`
+    + `t=${t.toFixed(2)}s　已投影 ${i - a0 + 1}/${B.off[selEvIdx+1] - a0} 帧`;
 }
 
 function drawDynamic() {
@@ -579,8 +645,10 @@ function hover(e) {
       if (d < bd) { bd = d; best = i; }
     }
   } else {
-    for (let i = 0; i < NE; i++) {
-      const d = (P.sx[i]-mx)**2 + (P.sy[i]-my)**2;
+    let bb = batchSel === 2 ? 0 : batchSel;
+    const B = BATCHES[bb];
+    if (B && B.sx) for (let i = 0; i < B.n; i++) {
+      const d = (B.sx[i]-mx)**2 + (B.sy[i]-my)**2;
       if (d < bd) { bd = d; best = i; }
     }
   }
@@ -593,9 +661,13 @@ function hover(e) {
       + `类 c${CLS[best]}　相位 ${(ANG[best]*180/Math.PI).toFixed(0)}°<br>`
       + `不典型度 ${SC[best].toFixed(3)}`;
   } else {
-    const ro = (META.ev_rollouts || [])[EVEP[best]] || {};
-    tip.innerHTML = `评测 · #${EVEP[best]}　${ro.cfg || '?'} · layout ${ro.layout || '?'}<br>`
-      + `${ro.ok ? '成功' : '失败'}　t=${EVT[best].toFixed(2)}s`;
+    const bb = batchSel === 2 ? 0 : batchSel;
+    const B = BATCHES[bb];
+    const r = B.ep[best];
+    const ro = (B.rollouts || [])[r] || {};
+    tip.innerHTML = `${B.name} · #${r}　layout ${ro.layout !== undefined ? ro.layout : '?'}<br>`
+      + `${ro.ok ? '成功' : '失败'}　t=${B.t[best].toFixed(2)}s`
+      + (ro.score !== undefined ? `　score ${ro.score.toFixed(1)}` : '');
   }
 }
 
@@ -690,17 +762,58 @@ document.getElementById('cmode').onchange = e => {
   updateLegend(); draw();
 };
 const evSel = document.getElementById('evsel');
-(META.ev_rollouts || []).forEach((r, i) => {
-  const o = document.createElement('option');
-  o.value = i;
-  o.textContent = `#${i} ${r.cfg} · layout ${r.layout} · ${r.ok ? '成功' : '失败'} (${r.n} 帧)`;
-  evSel.appendChild(o);
-});
-evSel.onchange = () => {
-  selEvIdx = parseInt(evSel.value, 10);
-  VB.load(selEvIdx < 0 ? '' : (META.ev_rollouts[selEvIdx] || {}).file);
+const batchSelEl = document.getElementById('batchsel');
+
+function fillRollouts(b) {
+  evSel.innerHTML = '<option value="-1">（不播放）</option>';
+  (BATCHES[b].rollouts || []).forEach((r, i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = BATCHES[b].label(i) + ` (${r.n} 帧)`;
+    evSel.appendChild(o);
+  });
+  evSel.value = -1;
+  selEvIdx = -1;
+}
+
+function updatePaneTitle() {
+  const el = document.getElementById('ptitleB');
+  if (!el) return;
+  if (batchSel === 2) {
+    el.innerHTML = `<b>评测轨迹 · 两批叠加</b> · 第一批 ${NE.toLocaleString()} 帧(白) + 第二批 ${N2.toLocaleString()} 帧(浅青)`;
+  } else if (batchSel === 1) {
+    el.innerHTML = `<b>评测轨迹 · 第二批 eval25</b> · ${N2.toLocaleString()} 帧 / ${(META.ev2_rollouts||[]).length} 集 `
+      + `<span style="color:#2ecc71">真实三视角 + 真实关节状态</span>（T 臂，成功 1/25）`;
+  } else {
+    el.innerHTML = `<b>评测轨迹 · 第一批</b> · ${NE.toLocaleString()} 帧 / ${(META.ev_rollouts||[]).length} 个 rollout `
+      + `<span class="warn">近似投影（未存关节状态）</span>`;
+  }
+}
+
+batchSelEl.onchange = () => {
+  batchSel = parseInt(batchSelEl.value, 10);
+  updatePaneTitle();
+  VB.dir = (batchSel === 1) ? META.eval25VideoDir : META.ev_videoDir;
+  if (batchSel === 2) {
+    evSel.disabled = true; selEvIdx = -1; VB.load('');
+    document.getElementById('evsel').title = '叠加模式下不播放（先选单一批次）';
+  } else {
+    evSel.disabled = false;
+    fillRollouts(batchSel);
+    VB.load('');
+  }
   draw();
 };
+
+evSel.onchange = () => {
+  selEvIdx = parseInt(evSel.value, 10);
+  const B = BATCHES[batchSel];
+  VB.load(selEvIdx < 0 ? '' : (B.rollouts[selEvIdx] || {}).file);
+  draw();
+};
+
+fillRollouts(0);
+updatePaneTitle();
 
 ['evShow', 'evLines', 'evOkOnly'].forEach(id => {
   document.getElementById(id).onchange = () => draw();

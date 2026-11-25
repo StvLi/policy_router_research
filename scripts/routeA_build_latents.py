@@ -68,6 +68,58 @@ def descriptor(imgs):
     return out
 
 
+EV25_KEYS = (("left_arm_joint_state", 6), ("left_ee_joint_state", 1),
+             ("right_arm_joint_state", 6), ("right_ee_joint_state", 1))
+
+
+def load_eval25_episodes(root):
+    """按"归零姿态"切分 states.jsonl（README §切分 episode），并核对与视频帧数一致。"""
+    rows = []
+    for line in open(os.path.join(root, "states.jsonl")):
+        r = json.loads(line)
+        st = r.get("state")
+        if not isinstance(st, dict):
+            continue
+        rows.append(np.concatenate([np.asarray(st[k], np.float32).ravel() for k, _ in EV25_KEYS]))
+    S = np.stack(rows)
+    is_reset = (np.abs(S[:, :6]).max(1) < 1e-3) & (np.abs(S[:, 7:13]).max(1) < 1e-3)
+    starts = [0] + [i for i in range(1, len(S)) if is_reset[i] and not is_reset[i - 1]]
+    segs = [S[s:(starts[n + 1] if n + 1 < len(starts) else len(S))] for n, s in enumerate(starts)]
+    man = json.load(open(os.path.join(root, "manifest.json")))
+    eps = man["episodes"]
+    assert len(segs) == len(eps), f"切出 {len(segs)} 段，manifest 有 {len(eps)} 集"
+    for i, (e, st) in enumerate(zip(eps, segs)):
+        nv = e["cams"]["head"]["frames"]
+        assert abs(len(st) - nv) <= 1, f"第 {i} 集状态 {len(st)} 行 vs 视频 {nv} 帧"
+    print(f"[eval25] 切出 {len(segs)} 集；成功 {sum(1 for e in eps if e['success'])} 集")
+    return eps, segs
+
+
+def decode_three(root, ep_meta, stride):
+    """解码一集的三路视频（640x480 -> 48x64），与训练数据的预处理完全一致。"""
+    import av
+    import cv2
+    outs = []
+    for cam in ("head", "left_wrist", "right_wrist"):
+        path = os.path.join(root, ep_meta["cams"][cam]["file"])
+        frames = []
+        try:
+            with av.open(path) as c:
+                for i, f in enumerate(c.decode(video=0)):
+                    if i % stride:
+                        continue
+                    frames.append(cv2.resize(f.to_ndarray(format="rgb24"), (A.IMG_W, A.IMG_H),
+                                             interpolation=cv2.INTER_AREA))
+        except Exception as ex:
+            print(f"  [warn] {cam}: {type(ex).__name__}")
+            return None
+        outs.append(np.stack(frames) if frames else None)
+    if any(o is None for o in outs):
+        return None
+    n = min(len(o) for o in outs)
+    return np.stack([o[:n] for o in outs], axis=1)          # (T, 3视角, H, W, 3)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default=CACHE)
@@ -75,6 +127,7 @@ def main():
     ap.add_argument("--emb", default=EMB)
     ap.add_argument("--dataset", default=A.DEFAULT_DATASET)
     ap.add_argument("--videos", default="/tmp/eval_clips")
+    ap.add_argument("--eval25", default="", help="data/eval25 目录；给了就额外投影这一批（真实三视角+真实状态）")
     ap.add_argument("--stride", type=int, default=5)
     ap.add_argument("--k", type=int, default=5)
     ap.add_argument("--iters", type=int, default=1500)
@@ -165,6 +218,50 @@ def main():
             continue
         rollouts.append(dict(cfg=("no_vlm" if ECFG[m][0] == 0 else "with_vlm"),
                              ok=bool(EOK[m][0]), layout=str(ELAY[m][0]), n=int(m.sum())))
+    # ---------------- 第二批：data/eval25（真实三视角 + 真实状态，零插补）----------------
+    EV2 = dict(n=0)
+    if a.eval25:
+        eps25, st25 = load_eval25_episodes(a.eval25)
+        Z2, T2, E2, OK2, SC2, LAY2 = [], [], [], [], [], []
+        for k, (em, stq) in enumerate(zip(eps25, st25)):
+            views = decode_three(a.eval25, em, a.stride)
+            if views is None:
+                continue
+            # views 已按 stride 采样；idx 是采样序号，f_idx 才是原始帧号（状态按原始帧号取）
+            T = min(len(views), (len(stq) - 1) // a.stride + 1)
+            idx = np.arange(T)
+            f_idx = idx * a.stride
+            imgs = views[idx][:, None]                          # (T, 1, 3视角, H, W, C)
+            # 真实状态窗口（早于起点则重复首帧，与训练一致）
+            win = np.stack([stq[np.minimum(f_idx - off, len(stq) - 1).clip(0)]
+                            for off in A.HIST_OFFSETS], axis=1).astype(np.float32)
+            win = ((win - mu_s) / sd_s).astype(np.float32)
+            MU2 = encode(imgs, win)
+            Z2.append((MU2 - mean) @ basis)                    # ← 同一个 mean/basis
+            T2.append(f_idx / A.FPS)
+            E2 += [k] * len(f_idx)
+            OK2 += [bool(em["success"])] * len(f_idx)
+            SC2 += [float(em.get("official_score", 0.0))] * len(f_idx)
+            LAY2 += [int(em["layout_id"])] * len(f_idx)
+            print(f"  eval25 投影 {k+1}/{len(eps25)}（layout {em['layout_id']}, "
+                  f"{'成功' if em['success'] else '失败'}, {len(f_idx)} 帧）")
+        if Z2:
+            Z2 = np.concatenate(Z2); T2 = np.concatenate(T2)
+            E2 = np.asarray(E2, np.int32); OK2 = np.asarray(OK2, bool)
+            SC2 = np.asarray(SC2, np.float32); LAY2 = np.asarray(LAY2, np.int32)
+            roll2 = []
+            for r in range(int(E2.max()) + 1):
+                m = E2 == r
+                if not m.any():
+                    continue
+                roll2.append(dict(layout=int(LAY2[m][0]), ok=bool(OK2[m][0]),
+                                  score=float(SC2[m][0]), n=int(m.sum()),
+                                  file=f"episode_{int(LAY2[m][0]):07d}_cam_head_"
+                                       f"{'success' if OK2[m][0] else 'fail'}"))
+            EV2 = dict(n=int(len(Z2)), z=Z2.astype(np.float32), t=T2.astype(np.float32),
+                       ep=E2, ok=OK2, layout=LAY2, score=SC2, rollouts=roll2)
+            print(f"\n[eval25] 帧 {len(Z2)}；集 {len(roll2)}；成功 {sum(1 for r in roll2 if r['ok'])}")
+
     # 统一 SANITY：两边都用同一基，训练点均值应接近 0
     print(f"\n训练点 PC 均值 {np.abs(Z_TR.mean(0)).round(3)}（应接近 0，说明基一致）")
     print(f"评测帧 {len(EZ)}；成功 {int(EOK.sum())} / 失败 {int((~EOK).sum())}")
@@ -180,7 +277,19 @@ def main():
              ev_z3=EZ.astype(np.float32), ev_t=ET.astype(np.float32),
              ev_ep=EEP, ev_ok=EOK, ev_cfg=ECFG, ev_layout=ELAY,
              ev_rollouts=np.array([json.dumps(r, ensure_ascii=False) for r in rollouts], dtype=object),
-             approx=np.array(1.0))
+             approx=np.array(1.0),
+             # 第二批（真实观测，零插补）
+             ev2_z3=(EV2["z"] if EV2.get("n") else np.zeros((0, 3), np.float32)),
+             ev2_t=(EV2["t"] if EV2.get("n") else np.zeros(0, np.float32)),
+             ev2_ep=(EV2["ep"] if EV2.get("n") else np.zeros(0, np.int32)),
+             ev2_ok=(EV2["ok"] if EV2.get("n") else np.zeros(0, bool)),
+             ev2_layout=(EV2["layout"] if EV2.get("n") else np.zeros(0, np.int32)),
+             ev2_score=(EV2["score"] if EV2.get("n") else np.zeros(0, np.float32)),
+             ev2_rollouts=np.array([json.dumps(r, ensure_ascii=False)
+                                    for r in EV2.get("rollouts", [])], dtype=object),
+             # 存下基，方便以后追加批次时复用
+             pc_mean=mean.astype(np.float32), pc_basis=basis.astype(np.float32),
+             state_mu=mu_s.astype(np.float32), state_sd=sd_s.astype(np.float32))
     print(f"写出 {a.out}")
 
 
