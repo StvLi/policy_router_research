@@ -20,6 +20,7 @@ import os
 import numpy as np
 
 ALPHA, WIN, NEED = 0.05, 5, 3
+IN_SAMPLE = {2, 8, 11, 12, 13, 17, 19, 24}
 
 
 def b64(arr, dtype):
@@ -52,6 +53,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--demo", default="/tmp/demo_latent.npz")
     ap.add_argument("--eval", default="/tmp/eval_latent.npz")
+    ap.add_argument("--eval25-latent", default="/tmp/eval25_latent.npz",
+                    help="25 局全量潜变量（存在则用它做右栏，覆盖 --eval 的 8 局）")
+    ap.add_argument("--eval25-result", default="data/eval25/result.json")
     ap.add_argument("--official", default="/tmp/routeC_layer.npz",
                     help="提供 official 分数的 npz（layouts/official 两个键）")
     ap.add_argument("--eval25-videos", default="videos/eval25")
@@ -59,7 +63,8 @@ def main():
     a = ap.parse_args()
 
     d = np.load(a.demo)
-    e = np.load(a.eval)
+    use25 = bool(a.eval25_latent) and os.path.exists(a.eval25_latent)
+    e = np.load(a.eval25_latent if use25 else a.eval)
     Zd, EPd, Td = d["Z"].astype(np.float64), d["EP"], d["T"]
     Ze, EPe, Te = e["Z"].astype(np.float64), e["EP"], e["T"]
     Sc_d, Sc_e = d["score"], e["score"]
@@ -93,13 +98,17 @@ def main():
                             p=(round(float(p[f:f + WIN].min()), 3) if f >= 0 else None))
         rollouts.append(dict(layout=int(ep), n=int(len(idx)),
                              score=round(float(Sc_e[idx].mean()), 3),
-                             cfg="路线 C"))
+                             cfg="路线 C",
+                             group=("样本内" if int(ep) in IN_SAMPLE else "样本外") if use25 else ""))
         offs_e.append(offs_e[-1] + int(len(idx)))
     offs_e = np.asarray(offs_e, np.int32)
 
     # 官方得分 → 成功/失败标签与视频文件名
     off = {}
-    if a.official and os.path.exists(a.official):
+    if use25 and a.eval25_result and os.path.exists(a.eval25_result):
+        det = json.load(open(a.eval25_result)).get("details", {})
+        off = {int(k): float(v["score"]) for k, v in det.items() if "score" in v}
+    elif a.official and os.path.exists(a.official):
         o = np.load(a.official, allow_pickle=True)
         off = {int(L): float(s) for L, s in zip(o["layouts"].tolist(), o["official"].tolist())}
     for ro in rollouts:
@@ -121,7 +130,10 @@ def main():
         pageTitle="路线 C · 潜空间浏览器",
         paneATitle=("<b>训练数据 · 演示</b> · "
                     f"{len(Ztr):,} 帧 / {len(offs)-1} 集 · 路线 C VAE 潜变量"),
-        paneBTitle=("<b>测试轨迹 · 8 局</b> · "
+        paneBTitle=("<b>测试轨迹 · " + (
+                        f"{len(rollouts)} 局（{sum(1 for r in rollouts if not r['ok'])} 失败 / "
+                        f"{sum(1 for r in rollouts if r['ok'])} 成功）" if use25 else "8 局")
+                    + "</b> · "
                     f"{len(Zev):,} 帧 · 同一 PCA 基投影 · "
                     "<span style='color:#ff7a18'>橙星=OOD 触发帧</span>"),
         videoDir="videos/head",                       # 演示集头部视频（仓库内，100 集从 ep003100 起）
@@ -133,8 +145,9 @@ def main():
         pc_var=[round(float(v) * 100, 2) for v in var[:3]],
         center=[0.0, 0.0],
         t_max=float(Td.max() / 25.0),
-        cls_counts={}, no_cls=True, cmode0="t", ev_palette=True,
-        batch0Label="路线 C 测试轨迹（8 局）", autoplayFirstFire=True,
+        cls_counts={}, no_cls=True, cmode0="t", ev_palette=True, alpha0=0.12,
+        batch0Label=("路线 C 测试轨迹（25 局）" if use25 else "路线 C 测试轨迹（8 局）"),
+        autoplayFirstFire=True, onlyCurOODDefault=bool(use25),
         ev_n=int(len(Zev)), ev_rollouts=rollouts, ev2_n=0, ev2_rollouts=[],
         ev_fire={"0": fire},
         approx=False,
@@ -164,8 +177,8 @@ def main():
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     open(a.out, "w").write(html)
     nf = sum(1 for v in fire.values() if v["idx"] >= 0)
-    print(f"触发 {nf}/8 局：" + "，".join(
-        f"layout {rollouts[r]['layout']}@{fire[str(r)]['t']}s" for r in range(8) if fire[str(r)]["idx"] >= 0))
+    print(f"触发 {nf}/{len(rollouts)} 局：" + "，".join(
+        f"layout {rollouts[r]['layout']}@{fire[str(r)]['t']}s" for r in range(len(rollouts)) if fire[str(r)]["idx"] >= 0))
     print(f"写出 {a.out}  ({os.path.getsize(a.out)/1024:.0f} KB)")
 
 

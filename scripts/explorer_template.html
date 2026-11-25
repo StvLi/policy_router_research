@@ -429,7 +429,7 @@ function star(ctx, x, y, r, col) {
 
 // 评测栏的触发点：优先用逐帧 p 现算（可随阈值滑块变化），否则退回 META.ev_fire
 const FIRE_WIN = 5, FIRE_NEED = 3;
-let alpha = 0.05;
+let alpha = META.alpha0 || 0.05;
 const fireCache = {};                     // "batch:rollout" → {idx, t, pmin}
 function fireRule(p, lo, hi, a) {
   for (let i = lo; i + FIRE_WIN <= hi; i++) {
@@ -1011,7 +1011,9 @@ function buildOODList() {
     row.className = 'oodrow';
     row.dataset.idx = i;
     row.innerHTML = `<span style="width:8px;height:8px;border-radius:2px;background:${hit ? '#ff7a18' : '#39404e'}"></span>`
-      + `<span>layout ${r.layout}</span><span style="color:${r.ok ? '#7fd1a8' : '#8b95a8'}">${r.ok ? '成功' : '失败'}</span>`
+      + `<span>#${r.layout}</span>`
+      + (r.group ? `<span style="color:#6b7688;font-size:10px">${r.group}</span>` : '')
+      + `<span style="color:${r.ok ? '#7fd1a8' : '#8b95a8'}">${r.ok ? '成功' : '失败'}</span>`
       + `<span class="st ${hit ? 'hit' : 'miss'}">${hit ? '⚑ ' + f.t.toFixed(1) + 's' : '○ 未检出'}</span>`;
     row.onclick = () => {
       const s = document.getElementById('evsel');
@@ -1028,6 +1030,16 @@ function buildOODList() {
   sum2.className = 'kv';
   sum2.innerHTML = `<span>成功 ${rolls.length - nFail} 局中误报</span><b>${nOk}</b>`;
   list.appendChild(sum2);
+  if (rolls.some(r => r.group)) {
+    ['样本内', '样本外'].forEach(gname => {
+      const idx = rolls.map((r, i) => [r, i]).filter(([r]) => r.group === gname && !r.ok);
+      const hit = idx.filter(([, i]) => { const f = batchFire(0, i); return f && f.idx >= 0; }).length;
+      const d = document.createElement('div');
+      d.className = 'kv';
+      d.innerHTML = `<span>　${gname}失败中检出</span><b>${hit} / ${idx.length}</b>`;
+      list.appendChild(d);
+    });
+  }
   Array.from(list.querySelectorAll('.oodrow'))
        .forEach(c => c.classList.toggle('on', +c.dataset.idx === selEvIdx));
 }
@@ -1036,6 +1048,8 @@ function buildOODList() {
 {
   const sl = document.getElementById('alpha');
   const lab = document.getElementById('alphav');
+  if (sl) { sl.value = String(Math.round(alpha * 1000)); }
+  if (lab) lab.textContent = alpha.toFixed(3);
   const apply = () => {
     alpha = Math.max(0.001, parseInt(sl.value, 10) / 1000);   // 1..200 → 0.001..0.200
     lab.textContent = alpha.toFixed(3);
@@ -1045,7 +1059,10 @@ function buildOODList() {
   };
   if (sl) { sl.oninput = apply; sl.onchange = apply; }
   const only = document.getElementById('onlyCurOOD');
-  if (only) only.onchange = () => { draw(); };
+  if (only) {
+    if (META.onlyCurOODDefault) only.checked = true;   // 触发局很多时默认只看当前
+    only.onchange = () => { draw(); };
+  }
 }
 buildOODList();
 if (META.autoplayFirstFire) {
