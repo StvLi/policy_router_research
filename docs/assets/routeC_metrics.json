@@ -1,0 +1,74 @@
+{
+  "pc_var": [
+    45.01,
+    11.95,
+    8.81
+  ],
+  "n_eval": 1214,
+  "n_demo": 2035,
+  "fire": {
+    "2": {
+      "first_fire": -1,
+      "progress_pct": null,
+      "t_s": null,
+      "n": 161
+    },
+    "8": {
+      "first_fire": -1,
+      "progress_pct": null,
+      "t_s": null,
+      "n": 161
+    },
+    "11": {
+      "first_fire": 59,
+      "progress_pct": 36.9,
+      "t_s": 11.8,
+      "n": 161
+    },
+    "12": {
+      "first_fire": -1,
+      "progress_pct": null,
+      "t_s": null,
+      "n": 87
+    },
+    "13": {
+      "first_fire": 44,
+      "progress_pct": 27.5,
+      "t_s": 8.8,
+      "n": 161
+    },
+    "17": {
+      "first_fire": 57,
+      "progress_pct": 35.6,
+      "t_s": 11.4,
+      "n": 161
+    },
+    "19": {
+      "first_fire": -1,
+      "progress_pct": null,
+      "t_s": null,
+      "n": 161
+    },
+    "24": {
+      "first_fire": 57,
+      "progress_pct": 35.6,
+      "t_s": 11.4,
+      "n": 161
+    }
+  },
+  "official": {
+    "2": 0.8,
+    "8": 0.8,
+    "11": 0.0,
+    "12": 1.0,
+    "13": 0.0,
+    "17": 0.0,
+    "19": 0.2,
+    "24": 0.0
+  },
+  "rule": {
+    "window": 5,
+    "need": 3,
+    "alpha": 0.05
+  }
+}
