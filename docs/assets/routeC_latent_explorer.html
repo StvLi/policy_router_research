@@ -7,8 +7,39 @@
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   body { margin:0; background:#0b0d12; color:#d8dee9; font:13px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; overflow:hidden; }
-  #wrap { display:flex; height:100vh; }
-  #side { width:290px; flex:0 0 290px; background:#11141b; border-right:1px solid #202533; padding:14px; overflow-y:auto; }
+  #wrap { display:flex; height:calc(100vh - 54px); }
+  #top { display:flex; align-items:center; gap:16px; height:54px; padding:0 14px;
+         background:#0e1118; border-bottom:1px solid #202533; }
+  #tbrand { display:flex; flex-direction:column; min-width:0; }
+  #tbrand b { font-size:13.5px; color:#e6ecf5; letter-spacing:.2px; }
+  #tbrand span { font-size:11px; color:#7c8698; white-space:nowrap; overflow:hidden;
+                 text-overflow:ellipsis; max-width:40vw; }
+  #dimbox { display:flex; align-items:center; gap:8px; font-size:11.5px; color:#8b95a8; white-space:nowrap; }
+  #dimbox select { width:auto; min-width:250px; font-size:12px; padding:5px 6px; }
+  #tstats { display:flex; gap:8px; margin-left:auto; }
+  .chip { background:#161a24; border:1px solid #232a38; border-radius:999px;
+          padding:4px 11px; font-size:11px; color:#9aa5b8; white-space:nowrap; }
+  .chip b { color:#e6ecf5; font-variant-numeric:tabular-nums; }
+  #tacts { display:flex; gap:6px; }
+  #tacts button { width:auto; padding:5px 10px; font-size:11.5px; }
+  #side { width:326px; flex:0 0 326px; background:#11141b; border-right:1px solid #202533;
+          padding:12px 14px 20px; overflow-y:auto; }
+  #side.collapsed { display:none; }
+  .grp main, .hintline { font-size:11px; color:#77839a; line-height:1.6; }
+  .cams { display:flex; gap:4px; margin-left:auto; }
+  .cams button { width:auto; padding:2px 7px; font-size:10.5px; border-radius:4px; }
+  .cams button.on { background:#2b3446; border-color:#3d4a60; color:#e6ecf5; }
+  .pbtn { width:auto; padding:3px 8px; font-size:11px; }
+  #help { position:fixed; inset:0; background:#05070bbb; display:none; z-index:50;
+          align-items:center; justify-content:center; }
+  #help.on { display:flex; }
+  #helpbox { width:min(760px, 90vw); max-height:80vh; overflow:auto; background:#12151d;
+             border:1px solid #262d3b; border-radius:10px; padding:20px 22px; }
+  #helpbox h2 { margin:0 0 6px; font-size:15px; }
+  #helpbox ol { margin:8px 0 0 18px; padding:0; font-size:12.5px; line-height:1.9; color:#c3ccda; }
+  #helpbox code { background:#1b2130; padding:1px 5px; border-radius:4px; font-size:11.5px; }
+  #helpbox .k { display:inline-block; background:#1b2130; border:1px solid #2b3446;
+                border-radius:4px; padding:0 6px; font-size:11px; }
   #stage { position:relative; flex:1; display:flex; gap:1px; background:#202533; }
   .pane { position:relative; flex:1; display:flex; flex-direction:column; background:#0b0d12; min-width:0; }
   .ptitle { flex:0 0 auto; padding:5px 10px; font-size:11px; color:#8b95a8;
@@ -39,6 +70,7 @@
   button:hover { background:#222838; }
   .kv { display:flex; justify-content:space-between; font-size:11px; color:#8b95a8; padding:1px 0; }
   .kv b { color:#cfd6e2; font-weight:600; font-variant-numeric:tabular-nums; }
+  #oodlist { max-height:42vh; overflow-y:auto; padding-right:2px; }
   .oodrow { display:flex; align-items:center; gap:6px; padding:2px 4px; cursor:pointer;
             border-radius:3px; font-size:11px; color:#9aa5b8; }
   .oodrow:hover { background:#161a24; }
@@ -52,24 +84,27 @@
             border-radius:6px; padding:8px 10px; font-size:10.5px; color:#8b95a8; }
   #legend .bar { height:8px; border-radius:2px; margin:3px 0 2px; }
   .hint { position:absolute; left:12px; bottom:12px; color:#4e5766; font-size:11px; }
-  #vidB { position:absolute; right:12px; top:46px; width:344px; background:#11141bee;
+  #vidB { position:absolute; right:12px; top:46px; width:318px; background:#11141bee;
           border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
   #vidB.on { display:block; }
   #vidB video { width:100%; border-radius:4px; display:block; background:#000; }
-  #vheadB { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vheadB { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
   #vheadB b { color:#d8dee9; font-weight:600; }
   #vcapB { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
   #vseekB { width:100%; margin:6px 0 2px; accent-color:#c9d3e3; height:14px; }
   #vtimeB { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
-  #vid { position:absolute; left:12px; top:46px; width:344px; background:#11141bee;
+  #vid { position:absolute; left:12px; top:46px; width:318px; background:#11141bee;
          border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
   #vid.on { display:block; }
   #vid video { width:100%; border-radius:4px; display:block; background:#000; }
-  #vhead { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vhead { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vhead b, #vheadB b { flex:1 1 100%; font-size:10.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #vhead button, #vheadB button { white-space:nowrap; }
   #vhead b { color:#d8dee9; font-weight:600; }
   #vhead select, #vheadB select { width:auto; padding:1px 4px; font-size:10.5px; }
-  #vheadB select { margin-left:auto; }
-  #vhead select { margin-left:auto; }
+  .cams { flex:0 0 auto; }
+  .pgrp { margin-left:auto; display:flex; gap:4px; align-items:center; }
+  .pgrp button { padding:2px 7px; font-size:11px; white-space:nowrap; }
   #vcap { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
   #vseek { width:100%; margin:6px 0 2px; accent-color:#4c9be8; height:14px; }
   #vtime { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
@@ -78,16 +113,55 @@
 </style>
 </head>
 <body>
+<div id="top">
+  <div id="tbrand"><b id="ttl"></b><span id="sub"></span></div>
+  <div id="dimbox" style="display:none">
+    <span>潜空间维数</span>
+    <select id="dimsel"></select>
+  </div>
+  <div id="tstats"></div>
+  <div id="tacts">
+    <button id="sidebtn" title="收起 / 展开侧栏（Tab）">◧ 侧栏</button>
+    <button id="helpbtn" title="使用说明">? 说明</button>
+  </div>
+</div>
+
+<div id="help"><div id="helpbox">
+  <h2>怎么用这个页面</h2>
+  <ol>
+    <li><b>选一局</b>：左栏「OOD 检出情况」里点任意一行，右栏就会播那一局的视频，轨迹上出现游标。</li>
+    <li><b>换视角</b>：视频头部的 <code>头部 / 左手 / 右手</code> 三个按钮；判断 OOD 是否合理时先看腕部。</li>
+    <li><b>看判据</b>：拖「阈值 α」滑块，星标、清单、检出计数会同时重算；点 <code>0.12</code> 等预设可快速跳。</li>
+    <li><b>看单条轨迹</b>：勾上「只显示当前轨迹的 OOD 样本」，其它局的星标就不会干扰。</li>
+    <li><b>换维数</b>（页面上方）：<code>16 / 32 / 64</code> 维各有一套 PCA 基，坐标不可跨维数比较。</li>
+  </ol>
+  <p class="hintline" style="margin-top:12px">
+    快捷键：<span class="k">空格</span> 播放/暂停 · <span class="k">←</span><span class="k">→</span> 前后 0.2 s ·
+    <span class="k">1</span><span class="k">2</span><span class="k">3</span> 切视角 · <span class="k">↑</span><span class="k">↓</span> 上/下一局 ·
+    <span class="k">Tab</span> 收起侧栏 · <span class="k">Esc</span> 关闭本页
+  </p>
+  <p class="hintline">
+    注意：本页要<b>在仓库里原位打开</b>（同目录下有 <code>routeC_latents/</code>）。单独拷一个 html 出去会读不到数据。
+  </p>
+  <p style="text-align:right;margin:14px 0 0"><button id="helpclose" style="width:auto">知道了</button></p>
+</div></div>
+
 <div id="wrap">
   <div id="side">
-    <h1 id="ttl"></h1>
-    <div class="sub" id="sub"></div>
-
-    <div class="grp" id="dimbox" style="display:none">
-      <div class="lbl">潜空间维数</div>
-      <select id="dimsel"></select>
-      <div class="kv" id="dimnote" style="margin-top:6px;display:none"><span></span><b></b></div>
+    <div class="grp" id="oodbox" style="display:none">
+      <div class="lbl">OOD 判据（滑窗 5 帧内 ≥3 帧 p &lt; 阈值）</div>
+      <div class="slider"><span>阈值 α</span><input type="range" id="alpha" min="1" max="200" step="1" value="50"></div>
+      <div class="kv" style="margin-bottom:6px"><span>当前 α</span><b id="alphav">0.050</b></div>
+      <div class="btnrow" id="apresets">
+        <button data-a="0.05">0.05</button><button data-a="0.10">0.10</button>
+        <button data-a="0.12">0.12</button><button data-a="0.20">0.20</button>
+      </div>
+      <label class="row"><input type="checkbox" id="onlyCurOOD"> 只显示当前轨迹的 OOD 样本</label>
+      <div class="lbl" style="margin-top:8px">OOD 检出情况</div>
+      <div id="oodlist"></div>
     </div>
+
+
 
     <div class="grp">
       <div class="lbl">着色方式</div>
@@ -120,15 +194,6 @@
       </select>
       <div class="lbl" style="margin-top:8px">rollout（播放/高亮）</div>
       <select id="evsel"><option value="-1">（不播放）</option></select>
-    </div>
-
-    <div class="grp" id="oodbox" style="display:none">
-      <div class="lbl">OOD 判据（滑窗 5 帧内 ≥3 帧 p &lt; 阈值）</div>
-      <div class="slider"><span>阈值 α</span><input type="range" id="alpha" min="1" max="200" step="1" value="50"></div>
-      <div class="kv" style="margin-bottom:6px"><span>当前 α</span><b id="alphav">0.050</b></div>
-      <label class="row"><input type="checkbox" id="onlyCurOOD"> 只显示当前轨迹的 OOD 样本</label>
-      <div class="lbl" style="margin-top:8px">OOD 检出情况</div>
-      <div id="oodlist"></div>
     </div>
 
     <div class="grp">
@@ -175,14 +240,16 @@
       <canvas id="cv2"></canvas>
     </div>
     <div id="vid">
-      <div id="vhead"><b id="vtitle">—</b><select id="vcam" title="切换视角"></select><button id="vbtn">暂停</button></div>
+      <div id="vhead"><b id="vtitle">—</b><div class="cams" id="vcam"></div>
+        <div class="pgrp"><button class="pbtn" id="vprev" title="后退 0.2s">◀</button><button id="vbtn">暂停</button><button class="pbtn" id="vnext" title="前进 0.2s">▶</button></div></div>
       <video id="v" muted loop playsinline preload="auto"></video>
       <input type="range" id="vseek" min="0" max="1000" step="1" value="0">
       <div id="vtime"></div>
       <div id="vcap"></div>
     </div>
     <div id="vidB">
-      <div id="vheadB"><b id="vtitleB">—</b><select id="vcamB" title="切换视角"></select><button id="vbtnB">暂停</button></div>
+      <div id="vheadB"><b id="vtitleB">—</b><div class="cams" id="vcamB"></div>
+        <div class="pgrp"><button class="pbtn" id="vprevB" title="后退 0.2s">◀</button><button id="vbtnB">暂停</button><button class="pbtn" id="vnextB" title="前进 0.2s">▶</button></div></div>
       <video id="vB" muted loop playsinline preload="auto"></video>
       <input type="range" id="vseekB" min="0" max="1000" step="1" value="0">
       <div id="vtimeB"></div>
@@ -906,6 +973,7 @@ function refreshData() {
   updatePaneTitle();
   buildOODList();
   updateLegend();
+  updateStats();
 }
 
 function mkVideo(p) {
@@ -916,6 +984,15 @@ function mkVideo(p) {
     title: document.getElementById(p.title), seeking: false, dir: p.dir, ext: p.ext || 'mp4',
   };
   o.btn.onclick = () => { if (o.el.paused) o.el.play(); else o.el.pause(); };
+  o.step = (dt) => {
+    const d = o.el.duration || 0;
+    if (!d) return;
+    o.el.pause();
+    o.el.currentTime = Math.max(0, Math.min(d - 0.01, o.el.currentTime + dt));
+    drawDynamic();
+  };
+  if (p.prev) document.getElementById(p.prev).onclick = () => o.step(-0.2);
+  if (p.next) document.getElementById(p.next).onclick = () => o.step(+0.2);
   o.seek.addEventListener('pointerdown', () => { o.seeking = true; });
   o.seek.addEventListener('pointerup',   () => { o.seeking = false; });
   o.seek.addEventListener('input', () => {
@@ -965,19 +1042,29 @@ function mkVideo(p) {
   return o;
 }
 const CAM_LABEL = {head:'头部', left_wrist:'左手', right_wrist:'右手'};
-function fillCams(sel, list, vid) {
-  if (!sel) return;
+function fillCams(box, list, vid) {
+  if (!box) return;
   const useful = (list || []).filter(c => c);
-  sel.innerHTML = useful.map(c => `<option value="${c}">${CAM_LABEL[c] || c}</option>`).join('');
-  sel.style.display = useful.length > 1 ? '' : 'none';
-  sel.onchange = () => vid.setCam(sel.value);
+  box.innerHTML = useful.map(c =>
+    `<button data-cam="${c}">${CAM_LABEL[c] || c}</button>`).join('');
+  box.style.display = useful.length > 1 ? '' : 'none';
+  box.querySelectorAll('button').forEach(b => {
+    b.onclick = () => { vid.setCam(b.dataset.cam); markCam(box, vid.cam); };
+  });
+  markCam(box, vid.cam || useful[0]);
+}
+function markCam(box, cam) {
+  if (!box) return;
+  box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cam === cam));
 }
 const VA = mkVideo({box:'vid', title:'vtitle', video:'v', btn:'vbtn',
-                    seek:'vseek', time:'vtime', cap:'vcap', dir: META.videoDir});
+                    seek:'vseek', time:'vtime', cap:'vcap', dir: META.videoDir,
+                    prev:'vprev', next:'vnext'});
 VA.cam = (META.train_cams && META.train_cams[0]) || 'head';
 fillCams(document.getElementById('vcam'), META.train_cams || ['head'], VA);
 const VB = mkVideo({box:'vidB', title:'vtitleB', video:'vB', btn:'vbtnB',
-                    seek:'vseekB', time:'vtimeB', cap:'vcapB', dir: META.ev_videoDir});
+                    seek:'vseekB', time:'vtimeB', cap:'vcapB', dir: META.ev_videoDir,
+                    prev:'vprevB', next:'vnextB'});
 VB.cam = 'head';
 fillCams(document.getElementById('vcamB'), META.ev_cams || ['head'], VB);
 
@@ -1118,8 +1205,15 @@ function initAlphaUI() {
     lab.textContent = alpha.toFixed(3);
     resetFire();
     buildOODList();
+    updateStats();
     draw();                     // 整屏重画：底图与游标必须同一套触发点
   };
+  document.querySelectorAll('#apresets button').forEach(b => {
+    b.onclick = () => {
+      sl.value = String(Math.round(parseFloat(b.dataset.a) * 1000));
+      apply();
+    };
+  });
   sl.oninput = apply; sl.onchange = apply;
   const only = document.getElementById('onlyCurOOD');
   if (only) {
@@ -1156,6 +1250,67 @@ function updateLegend() {
   }
 }
 updateLegend();
+
+// ---------- 顶栏统计 / 侧栏开关 / 帮助 / 快捷键 ----------
+function updateStats() {
+  const el = document.getElementById('tstats');
+  if (!el) return;
+  const rolls = (BATCHES[0] && BATCHES[0].rollouts) || [];
+  const nFail = rolls.filter(r => !r.ok).length;
+  const hasOOD = !!EVP || !!(META.ev_fire && META.ev_fire['0']);
+  let hit = -1;
+  if (hasOOD && rolls.length) {
+    hit = rolls.reduce((k, r, i) => k + ((batchFire(0, i) || {}).idx >= 0 ? 1 : 0), 0);
+  }
+  const dimTxt = META.latent ? `${META.latent} 维` : '';
+  el.innerHTML =
+    `<span class="chip">训练 <b>${(META.n || N).toLocaleString()}</b> 帧 / ${META.n_ep || '?'} 集</span>`
+    + `<span class="chip">测试 <b>${rolls.length}</b> 局（失败 ${nFail}）</span>`
+    + (hit >= 0 ? `<span class="chip">α=<b>${alpha.toFixed(3)}</b> 检出 <b>${hit}</b>/${nFail}</span>` : '')
+    + (dimTxt ? `<span class="chip">潜变量 <b>${dimTxt}</b> · PC1-3 ${(META.pc_var||[]).join('/')}%</span>` : '');
+}
+
+{
+  const sbtn = document.getElementById('sidebtn');
+  if (sbtn) sbtn.onclick = () => {
+    document.getElementById('side').classList.toggle('collapsed');
+    setTimeout(resize, 30);
+  };
+  const hb = document.getElementById('helpbtn');
+  const hlp = document.getElementById('help');
+  if (hb) hb.onclick = () => hlp.classList.add('on');
+  const hc = document.getElementById('helpclose');
+  if (hc) hc.onclick = () => hlp.classList.remove('on');
+  if (hlp) hlp.onclick = e => { if (e.target === hlp) hlp.classList.remove('on'); };
+
+  window.addEventListener('keydown', e => {
+    if (e.target && /input|select|textarea/i.test(e.target.tagName)) return;
+    const hlpEl = document.getElementById('help');
+    if (e.key === 'Escape') { if (hlpEl) hlpEl.classList.remove('on'); return; }
+    if (e.key === 'Tab') { e.preventDefault(); document.getElementById('sidebtn').click(); return; }
+    const vb = (document.getElementById('vB').classList.contains('on') ? VB : VA);
+    if (!vb || !vb.el.src) return;
+    if (e.code === 'Space') { e.preventDefault(); vb.btn.click(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); vb.step(-0.2); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); vb.step(0.2); }
+    else if (e.key === '1' || e.key === '2' || e.key === '3') {
+      const cams = ['head', 'left_wrist', 'right_wrist'];
+      const want = cams[+e.key - 1];
+      const box = (vb === VB) ? document.getElementById('vcamB') : document.getElementById('vcam');
+      const btn = box && box.querySelector(`button[data-cam="${want}"]`);
+      if (btn) btn.click();
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const sel = document.getElementById('evsel');
+      if (!sel || sel.disabled) return;
+      const i = parseInt(sel.value, 10);
+      const n = [...sel.options].length - 1;
+      let j = (isNaN(i) ? 0 : i) + (e.key === 'ArrowDown' ? 1 : -1);
+      j = Math.max(0, Math.min(n, j));
+      sel.value = String(j); sel.onchange();
+    }
+  });
+}
 
 // ---------- 页面启动 / 维数切换 ----------
 function loadDataset(key) {
