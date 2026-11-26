@@ -34,6 +34,7 @@ def main():
     ap.add_argument("--alpha-src", default="/tmp/latent")
     ap.add_argument("--out", default="docs/assets/routeC_latents")
     ap.add_argument("--keep", default="d32", help="默认选中的 key")
+    ap.add_argument("--stat", default="lof", choices=["lof", "progress", "global"])
     ap.add_argument("--with-alpha", action="store_true",
                     help="额外挂上 α 核验版（20 集/25 局/真实重建分）；默认不挂——页面只保留一种评价指标")
     a = ap.parse_args()
@@ -44,7 +45,7 @@ def main():
     # ---- 1) 交接包维数 ----
     print("== 交接包 ==", flush=True)
     subprocess.run([PY, os.path.join(HERE, "build_routec_handover_js.py"),
-                    "--src", a.handover_src, "--out", a.out], check=True)
+                    "--src", a.handover_src, "--out", a.out, "--stat", a.stat], check=True)
     man = load_js(os.path.join(a.out, "manifest.js"))
     entries += man["dims"]
     data_keys += [e["key"] for e in man["dims"]]

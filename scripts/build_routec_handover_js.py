@@ -81,6 +81,47 @@ def progress_knn_p(Z_ref, prog_ref, ep_ref, Z_cal, prog_cal, ep_cal, Z_tgt, prog
     return st, p
 
 
+def knn_dist(Q, EPq, R, EPr, k=5):
+    """Q 每帧到 R 的第 k 近邻距离（排除同集）。O(n·m) 分块计算。"""
+    out = np.empty(len(Q), np.float32)
+    Rn = (R ** 2).sum(1)
+    for i in range(0, len(Q), 256):
+        blk = Q[i:i + 256]
+        dd = (blk ** 2).sum(1)[:, None] + Rn[None, :] - 2 * blk @ R.T
+        for j in range(len(blk)):
+            row = dd[j].copy()
+            row[EPr == EPq[i + j]] = np.inf
+            kk = min(k, int(np.isfinite(row).sum())) - 1
+            out[i + j] = np.sqrt(np.partition(row, kk)[kk])
+    return out
+
+
+def lof_stat(Q, EPq, R, EPr, dk_ref, k=5):
+    """局部离群因子式统计量：s = 到第 k 近邻的距离 / 这些邻居自身尺度的中位数。
+
+    与进度无关：在密集区域"邻居自己也挨得近"，分母小、容忍度高；稀疏区域反之。
+    这样多峰分布下不会因为"换了阶段"就被判异常（全局 kNN 会）。
+    """
+    out = np.empty(len(Q), np.float32)
+    Rn = (R ** 2).sum(1)
+    for i in range(0, len(Q), 256):
+        blk = Q[i:i + 256]
+        dd = (blk ** 2).sum(1)[:, None] + Rn[None, :] - 2 * blk @ R.T
+        for j in range(len(blk)):
+            row = dd[j].copy()
+            row[EPr == EPq[i + j]] = np.inf
+            idx = np.argpartition(row, k)[:k]
+            out[i + j] = np.sqrt(row[idx].max()) / max(1e-6, float(np.median(dk_ref[idx])))
+    return out
+
+
+def lof_p(Z_fit, ep_fit, Z_cal, ep_cal, Z_tgt, ep_tgt, k=5):
+    dk_ref = knn_dist(Z_fit, ep_fit, Z_fit, ep_fit, k)
+    sc = lof_stat(Z_cal, ep_cal, Z_fit, ep_fit, dk_ref, k)
+    st = lof_stat(Z_tgt, ep_tgt, Z_fit, ep_fit, dk_ref, k)
+    return st, (1.0 + (sc[None, :] >= st[:, None]).sum(1)) / (len(sc) + 1.0)
+
+
 def progress_of(T, EP):
     out = np.zeros(len(T), np.float32)
     for ep in np.unique(EP):
@@ -89,7 +130,7 @@ def progress_of(T, EP):
     return out
 
 
-def build(files, info):
+def build(files, info, stat="lof"):
     demo = np.load(files["demo"], allow_pickle=True)
     ood = np.load(files["ood"], allow_pickle=True)
     ev = np.load(files["eval"], allow_pickle=True)
@@ -103,12 +144,15 @@ def build(files, info):
     SUCC = ev["SUCCESS"] if "SUCCESS" in ev.files else np.zeros(len(EPe), bool)
 
     # ---- 逐帧 p：优先用交接包给的 S/P，否则潜空间马氏距离 ----
-    p_src = "共形 p（进度条件 kNN）"
-    if "S" in demo.files and "P" in demo.files:
-        S_tr, P_tr = demo["S"], demo["P"]
-        S_ev, P_ev = ev["S"], ev["P"]
-    else:
-        cal_mask = (EPd % CAL_EVERY) == 0
+    cal_mask = (EPd % CAL_EVERY) == 0
+    if stat == "lof":                       # v2：与进度无关
+        p_src = "共形 p（局部密度归一化 kNN，无需进度）"
+        S_tr, P_tr = lof_p(Ztr[~cal_mask], EPd[~cal_mask],
+                           Ztr[cal_mask], EPd[cal_mask], Ztr, EPd)
+        S_ev, P_ev = lof_p(Ztr[~cal_mask], EPd[~cal_mask],
+                           Ztr[cal_mask], EPd[cal_mask], Zev, EPe)
+    elif stat == "progress":                # v1：进度条件 kNN
+        p_src = "共形 p（进度条件 kNN）"
         Pd = progress_of(Td, EPd)
         Pe = progress_of(Te, EPe)
         S_tr, P_tr = progress_knn_p(Ztr[~cal_mask], Pd[~cal_mask], EPd[~cal_mask],
@@ -117,6 +161,17 @@ def build(files, info):
         S_ev, P_ev = progress_knn_p(Ztr[~cal_mask], Pd[~cal_mask], EPd[~cal_mask],
                                     Ztr[cal_mask], Pd[cal_mask], EPd[cal_mask],
                                     Zev, Pe, EPe)
+    elif stat == "global":                  # 去掉 u 的朴素版本（对照，不推荐）
+        p_src = "共形 p（全局 kNN，无进度）"
+        S_tr, P_tr = None, None
+        dk = knn_dist(Ztr[~cal_mask], EPd[~cal_mask], Ztr[~cal_mask], EPd[~cal_mask])
+        S_tr = knn_dist(Ztr, EPd, Ztr[~cal_mask], EPd[~cal_mask])
+        S_ev = knn_dist(Zev, EPe, Ztr[~cal_mask], EPd[~cal_mask])
+        sc = S_tr[cal_mask]
+        P_tr = (1.0 + (sc[None, :] >= S_tr[:, None]).sum(1)) / (len(sc) + 1.0)
+        P_ev = (1.0 + (sc[None, :] >= S_ev[:, None]).sum(1)) / (len(sc) + 1.0)
+    else:
+        raise SystemExit(f"未知 stat: {stat}")
 
     # ---- 训练集排序 ----
     o = np.lexsort((Td, EPd))
@@ -207,6 +262,8 @@ def main():
     ap.add_argument("--src", default="data/routeC_latents")
     ap.add_argument("--out", default="docs/assets/routeC_latents")
     ap.add_argument("--default", default="")
+    ap.add_argument("--stat", default="lof", choices=["lof", "progress", "global"],
+                    help="lof=局部密度归一化（无进度，推荐）；progress=进度条件；global=全局 kNN（对照）")
     a = ap.parse_args()
 
     idx = json.load(open(os.path.join(a.src, "export_index.json")))
@@ -217,7 +274,7 @@ def main():
         files = {k: os.path.join(a.src, info["files"][k]) for k in ("demo", "ood", "eval")}
         if not all(os.path.exists(v) for v in files.values()):
             print(f"跳过 d{N}：文件缺失"); continue
-        ds, man = build(files, info)
+        ds, man = build(files, info, a.stat)
         js = ("window.ROUTEC_DATA = window.ROUTEC_DATA || {};\n"
               f"window.ROUTEC_DATA[\"{man['key']}\"] = {json.dumps(ds, ensure_ascii=False)};\n")
         p = os.path.join(a.out, f"d{N}.js")
