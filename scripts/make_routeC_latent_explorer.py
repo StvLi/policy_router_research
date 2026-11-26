@@ -60,6 +60,9 @@ def main():
                     help="提供 official 分数的 npz（layouts/official 两个键）")
     ap.add_argument("--eval25-videos", default="videos/eval25")
     ap.add_argument("--out", default="docs/assets/routeC_latent_explorer.html")
+    ap.add_argument("--dims-dir", default="docs/assets/routeC_latents",
+                    help="按维数分文件的数据目录（含 manifest.js）；存在则生成『外壳页』，数据按需加载")
+    ap.add_argument("--default-dim", default="")
     a = ap.parse_args()
 
     d = np.load(a.demo)
@@ -170,10 +173,36 @@ def main():
         ev2=dict(n=0),
     )
 
+    # ---- 有维数清单 → 生成外壳页：数据在 routeC_latents/*.js 里按需加载 ----
+    man_path = os.path.join(a.dims_dir, "manifest.js")
+    if os.path.exists(man_path):
+        txt = open(man_path).read()
+        man = json.loads(txt[txt.index("{"): txt.rindex("}") + 1])
+        dimkey = a.default_dim or man.get("default") or man["dims"][0]["key"]
+        shell = dict(pageTitle="路线 C · 潜空间浏览器",
+                     title="π0 中间表征 → VAE 潜变量 → 训练集 PCA 前 3 维（按维数切换）",
+                     videoDir="videos/head", ev_videoDir=a.eval25_videos,
+                     eval25VideoDir=a.eval25_videos,
+                     ev_cams=["head", "left_wrist", "right_wrist"], train_cams=["head"],
+                     defaultDim=dimkey, dimDir=os.path.relpath(a.dims_dir, os.path.dirname(a.out)))
+        here = os.path.dirname(os.path.abspath(__file__))
+        tpl = open(os.path.join(here, "explorer_template.html"), encoding="utf-8").read()
+        pre = f'<script src="{shell["dimDir"]}/manifest.js"></script>'
+        html = (tpl.replace("__PRELOAD__", pre)
+                   .replace("__META__", json.dumps(shell, ensure_ascii=False))
+                   .replace("__DATA__", "{}")
+                   .replace("__TITLE__", "路线 C · 潜空间浏览器"))
+        os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
+        open(a.out, "w").write(html)
+        dims = ", ".join(f"{d['latent']}维" for d in man["dims"])
+        print(f"外壳页：{a.out}（{os.path.getsize(a.out)/1024:.0f} KB）· 维数 {dims} · 默认 {dimkey}")
+        print(f"数据目录：{a.dims_dir}/（manifest.js + {len(man['dims'])} 个 .js，按需注入）")
+        return
+
     here = os.path.dirname(os.path.abspath(__file__))
     tpl = open(os.path.join(here, "explorer_template.html"), encoding="utf-8").read()
     html = tpl.replace("__META__", json.dumps(META, ensure_ascii=False)) \
-              .replace("__DATA__", json.dumps(DATA))
+              .replace("__DATA__", json.dumps(DATA)).replace("__PRELOAD__", "")
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     open(a.out, "w").write(html)
     nf = sum(1 for v in fire.values() if v["idx"] >= 0)

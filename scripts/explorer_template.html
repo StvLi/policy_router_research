@@ -83,6 +83,12 @@
     <h1 id="ttl"></h1>
     <div class="sub" id="sub"></div>
 
+    <div class="grp" id="dimbox" style="display:none">
+      <div class="lbl">潜空间维数</div>
+      <select id="dimsel"></select>
+      <div class="kv" id="dimnote" style="margin-top:6px;display:none"><span></span><b></b></div>
+    </div>
+
     <div class="grp">
       <div class="lbl">着色方式</div>
       <select id="cmode">
@@ -188,9 +194,11 @@
   </div>
 </div>
 
+__PRELOAD__
 <script>
-const META = __META__;
-const DATA = __DATA__;
+const SHELL = __META__;            // 页面级配置：视频目录、视角、维数清单
+let META = SHELL;                  // 当前数据集的 meta（与 SHELL 合并后）
+let DATA = (__DATA__ || {});
 
 function dec(b64, Type) {
   const bin = atob(b64);
@@ -198,49 +206,72 @@ function dec(b64, Type) {
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return new Type(u8.buffer);
 }
-const PC = dec(DATA.pc, Float32Array);
-const CLS = dec(DATA.cls, Uint8Array);
-const EPI = dec(DATA.ep, Int32Array);
-const OFF = dec(DATA.off, Int32Array);
-const TT = dec(DATA.t, Float32Array);
-const SC = dec(DATA.score, Float32Array);
-const SCp = DATA.p ? dec(DATA.p, Float32Array) : null;   // 可选的逐帧 p（路线 C 页面提供）
-const ANG = dec(DATA.ang, Float32Array);
-const N = META.n;
 
-// 评测栏
-const EV = DATA.ev || {};
-const EVZ = EV.n ? dec(EV.z, Float32Array) : new Float32Array(0);
-const EVT = EV.n ? dec(EV.t, Float32Array) : new Float32Array(0);
-const EVEP = EV.n ? dec(EV.ep, Int32Array) : new Int32Array(0);
-const EVOFF = EV.n ? dec(EV.off, Int32Array) : new Int32Array(1);
-const EVP = EV.p ? dec(EV.p, Float32Array) : null;   // 逐帧 p（可实时改阈值）
-const EVOK = EV.n ? dec(EV.ok, Uint8Array) : new Uint8Array(0);
-const EVCFG = EV.n ? dec(EV.cfg, Uint8Array) : new Uint8Array(0);
-const NE = EV.n || 0;
+// ---- 数据集状态（applyDataset 每次重设）----
+let PC = new Float32Array(0), CLS = new Uint8Array(0), EPI = new Int32Array(0);
+let OFF = new Int32Array(1), TT = new Float32Array(0), SC = new Float32Array(0);
+let SCp = null, ANG = new Float32Array(0), N = 0;
+let EV = {}, EVZ = new Float32Array(0), EVT = new Float32Array(0), EVEP = new Int32Array(0);
+let EVOFF = new Int32Array(1), EVP = null, EVOK = new Uint8Array(0), EVCFG = new Uint8Array(0), NE = 0;
+let E2 = {}, E2Z = new Float32Array(0), E2T = new Float32Array(0), E2EP = new Int32Array(0);
+let E2OFF = new Int32Array(1), E2OK = new Uint8Array(0), N2 = 0;
+let BATCHES = [];
+let batchSel = 0;
+let clsList = [], clsColor = {}, clsVisible = {};
 
-// 第二批（data/eval25，真实观测）
-const E2 = DATA.ev2 || {};
-const E2Z = E2.n ? dec(E2.z, Float32Array) : new Float32Array(0);
-const E2T = E2.n ? dec(E2.t, Float32Array) : new Float32Array(0);
-const E2EP = E2.n ? dec(E2.ep, Int32Array) : new Int32Array(0);
-const E2OFF = E2.n ? dec(E2.off, Int32Array) : new Int32Array(1);
-const E2OK = E2.n ? dec(E2.ok, Uint8Array) : new Uint8Array(0);
-const N2 = E2.n || 0;
+const PAL0 = ['#4c9be8','#f0932b','#2ecc71','#e74c3c','#9b59b6','#1abc9c','#e67e22','#95a5a6',
+              '#3498db','#e84393','#00b894','#fdcb6e','#6c5ce7','#d63031','#00cec9','#b2bec3'];
 
-const BATCHES = [
-  {name: '第一批', n: NE, z: EVZ, t: EVT, ep: EVEP, off: EVOFF, ok: EVOK,
-   rollouts: META.ev_rollouts || [], dir: META.ev_videoDir, tint: '#f2f6fc', label: b => `#${b} ${(META.ev_rollouts[b]||{}).cfg||''} · layout ${(META.ev_rollouts[b]||{}).layout} · ${(META.ev_rollouts[b]||{}).ok?'成功':'失败'}`},
-  {name: '第二批', n: N2, z: E2Z, t: E2T, ep: E2EP, off: E2OFF, ok: E2OK,
-   rollouts: META.ev2_rollouts || [], dir: META.eval25VideoDir, tint: '#c9f0ff', label: b => { const r=(META.ev2_rollouts[b]||{}); return `#${b} layout ${r.layout} · ${r.ok?'成功':'失败'} · score ${(r.score||0).toFixed(1)}`; }},
-];
-let batchSel = 0;          // 0/1 = 单批；2 = 叠加
+// 把一份数据集对象装进全局状态
+function applyDataset(ds, dimmeta) {
+  if (!ds || !ds.pc) return false;
+  DATA = ds;
+  META = Object.assign({}, SHELL, dimmeta || ds.meta || {});
+  PC = dec(DATA.pc, Float32Array);
+  CLS = dec(DATA.cls, Uint8Array);
+  EPI = dec(DATA.ep, Int32Array);
+  OFF = dec(DATA.off, Int32Array);
+  TT = dec(DATA.t, Float32Array);
+  SC = dec(DATA.score, Float32Array);
+  SCp = DATA.p ? dec(DATA.p, Float32Array) : null;
+  ANG = dec(DATA.ang, Float32Array);
+  N = META.n || (PC.length / 3);
 
-const PAL = ['#4c9be8','#f0932b','#2ecc71','#e74c3c','#9b59b6','#1abc9c','#e67e22','#95a5a6',
-             '#3498db','#e84393','#00b894','#fdcb6e','#6c5ce7','#d63031','#00cec9','#b2bec3'];
-const clsList = META.no_cls ? [] : Object.keys(META.cls_counts).map(Number).sort((a,b)=>a-b);
-const clsColor = {}; clsList.forEach((c,i)=> clsColor[c] = PAL[i % PAL.length]);
-const clsVisible = {}; clsList.forEach(c => clsVisible[c] = true);
+  EV = DATA.ev || {};
+  EVZ = EV.n ? dec(EV.z, Float32Array) : new Float32Array(0);
+  EVT = EV.n ? dec(EV.t, Float32Array) : new Float32Array(0);
+  EVEP = EV.n ? dec(EV.ep, Int32Array) : new Int32Array(0);
+  EVOFF = EV.n ? dec(EV.off, Int32Array) : new Int32Array(1);
+  EVP = EV.p ? dec(EV.p, Float32Array) : null;
+  EVOK = EV.n ? dec(EV.ok, Uint8Array) : new Uint8Array(0);
+  EVCFG = EV.n ? dec(EV.cfg, Uint8Array) : new Uint8Array(0);
+  NE = EV.n || 0;
+
+  E2 = DATA.ev2 || {};
+  E2Z = E2.n ? dec(E2.z, Float32Array) : new Float32Array(0);
+  E2T = E2.n ? dec(E2.t, Float32Array) : new Float32Array(0);
+  E2EP = E2.n ? dec(E2.ep, Int32Array) : new Int32Array(0);
+  E2OFF = E2.n ? dec(E2.off, Int32Array) : new Int32Array(1);
+  E2OK = E2.n ? dec(E2.ok, Uint8Array) : new Uint8Array(0);
+  N2 = E2.n || 0;
+
+  BATCHES = [
+    {name: '第一批', n: NE, z: EVZ, t: EVT, ep: EVEP, off: EVOFF, ok: EVOK,
+     rollouts: META.ev_rollouts || [], dir: META.ev_videoDir, tint: '#f2f6fc',
+     label: b => `#${b} ${(META.ev_rollouts[b]||{}).cfg||''} · layout ${(META.ev_rollouts[b]||{}).layout} · ${(META.ev_rollouts[b]||{}).ok?'成功':'失败'}`},
+    {name: '第二批', n: N2, z: E2Z, t: E2T, ep: E2EP, off: E2OFF, ok: E2OK,
+     rollouts: META.ev2_rollouts || [], dir: META.eval25VideoDir, tint: '#c9f0ff',
+     label: b => { const r=(META.ev2_rollouts[b]||{}); return `#${b} layout ${r.layout} · ${r.ok?'成功':'失败'} · score ${(r.score||0).toFixed(1)}`; }},
+  ];
+
+  clsList = META.no_cls ? [] : Object.keys(META.cls_counts || {}).map(Number).sort((a,b)=>a-b);
+  clsColor = {}; clsVisible = {};
+  clsList.forEach((c, i) => { clsColor[c] = PAL0[i % PAL0.length]; clsVisible[c] = true; });
+  resetFire();
+  return true;
+}
+
+const PAL = PAL0;
 
 // ---------- 相机（两栏共享） ----------
 let yaw = 0, pitch = 0, zoom = 1, panX = 0, panY = 0, fov = 520;   // 默认沿 PC3 看 → PC1-PC2 平面，环最清楚
@@ -255,10 +286,14 @@ function mkPane(id) {
 }
 const PA = mkPane('cv'), PB = mkPane('cv2');
 
-let ext = 0;
-for (let i = 0; i < 3 * N; i++) ext = Math.max(ext, Math.abs(PC[i]));
-if (NE) for (let i = 0; i < 3 * NE; i++) ext = Math.max(ext, Math.abs(EVZ[i]));
-ext = ext || 1;
+let ext = 1;
+function computeExt() {
+  let e = 0;
+  for (let i = 0; i < 3 * N; i++) e = Math.max(e, Math.abs(PC[i]));
+  if (NE) for (let i = 0; i < 3 * NE; i++) e = Math.max(e, Math.abs(EVZ[i]));
+  ext = e || 1;
+}
+computeExt();
 
 function alloc(P, n) {
   if (P.n === n) return;
@@ -266,7 +301,8 @@ function alloc(P, n) {
   P.sx = new Float32Array(n); P.sy = new Float32Array(n);
   P.ssz = new Float32Array(n); P.zrot = new Float32Array(n);
 }
-alloc(PA, N); alloc(PB, NE);
+function allocPanes() { alloc(PA, N); alloc(PB, NE); }
+allocPanes();
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -804,46 +840,73 @@ function hover(e) {
 }
 
 // ---------- 侧栏 ----------
-document.getElementById('ttl').textContent = META.pageTitle || '潜空间浏览器';
-document.getElementById('sub').textContent = META.title;
-document.getElementById('k_n').textContent = META.n.toLocaleString();
-document.getElementById('k_ep').textContent = META.n_ep;
-document.getElementById('k_var').textContent = META.pc_var.join(' / ') + ' %';
-
 const clsBox = document.getElementById('clss');
-if (META.no_cls) {
-  document.getElementById('clsbox').style.display = 'none';
-  const s = document.getElementById('cmode');
-  ['cls', 'ang'].forEach(v => { const o = s.querySelector(`option[value="${v}"]`); if (o) o.remove(); });
-  s.value = cmode;
-}
-clsList.forEach(c => {
-  const row = document.createElement('label');
-  row.className = 'row';
-  row.innerHTML = `<input type="checkbox" checked data-c="${c}">
-    <span class="sw" style="background:${clsColor[c]}"></span>
-    <span>c${c}</span><span class="cnt">${(META.cls_counts[c]||0).toLocaleString()}</span>`;
-  row.querySelector('input').onchange = ev => { clsVisible[c] = ev.target.checked; draw(); };
-  clsBox.appendChild(row);
-});
+const epSel = document.getElementById('epsel');
+const batchSelEl0 = document.getElementById('batchsel');
+const BATCH_OPTS = Array.from(batchSelEl0.options).map(o => ({ v: o.value, t: o.textContent }));
 
-{
+epSel.onchange = () => { selEpIdx = parseInt(epSel.value, 10); setVideo(selEpIdx); draw(); };
+
+// 随数据集刷新侧栏（换维数 / 首次加载都走这里）
+function refreshData() {
+  document.getElementById('ttl').textContent = META.pageTitle || '潜空间浏览器';
+  document.getElementById('sub').textContent = META.title || '';
+  document.getElementById('k_n').textContent = (META.n || N).toLocaleString();
+  document.getElementById('k_ep').textContent = META.n_ep;
+  document.getElementById('k_var').textContent = (META.pc_var || []).join(' / ') + ' %';
+
+  const s = document.getElementById('cmode');
+  ['cls', 'ang'].forEach(v => {
+    const has = (v !== 'cls') || !META.no_cls;
+    const o = s.querySelector(`option[value="${v}"]`);
+    if (!has && o) o.remove();
+  });
+  if (META.no_cls) {
+    document.getElementById('clsbox').style.display = 'none';
+  } else {
+    document.getElementById('clsbox').style.display = '';
+    clsBox.innerHTML = '';
+    clsList.forEach(c => {
+      const row = document.createElement('label');
+      row.className = 'row';
+      row.innerHTML = `<input type="checkbox" checked data-c="${c}">
+        <span class="sw" style="background:${clsColor[c]}"></span>
+        <span>c${c}</span><span class="cnt">${(META.cls_counts[c]||0).toLocaleString()}</span>`;
+      row.querySelector('input').onchange = ev => { clsVisible[c] = ev.target.checked; draw(); };
+      clsBox.appendChild(row);
+    });
+  }
+  s.value = cmode;
+
   const elA = document.getElementById('ptitleA');
   if (elA && META.paneATitle) elA.innerHTML = META.paneATitle;
-  if (!N2) {
-    const s = document.getElementById('batchsel');
-    Array.from(s.options).forEach(o => { if (o.value !== '0') o.remove(); });
-    if (META.batch0Label) s.options[0].textContent = META.batch0Label;
-    s.value = '0';
-  }
+
+  // 批次下拉：按当前数据集有无 eval25 决定选项
+  batchSelEl0.innerHTML = '';
+  BATCH_OPTS.forEach(o => {
+    if (o.v === '1' && !N2) return;
+    if (o.v === '2' && !(N2 && NE)) return;
+    const op = document.createElement('option');
+    op.value = o.v;
+    op.textContent = (o.v === '0' && META.batch0Label) ? META.batch0Label : o.t;
+    batchSelEl0.appendChild(op);
+  });
+  if (!N2) { batchSel = 0; batchSelEl0.value = '0'; }
+
+  epSel.innerHTML = '<option value="-1">（不显示轨迹）</option>';
+  (META.ep_names || []).forEach((name, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)`;
+    epSel.appendChild(o);
+  });
+  epSel.value = '-1';
+
+  initAlphaUI();          // 先定阈值（α 来自数据集 meta），再据此算触发点
+  fillRollouts(batchSel);
+  updatePaneTitle();
+  buildOODList();
+  updateLegend();
 }
-const epSel = document.getElementById('epsel');
-META.ep_names.forEach((name, i) => {
-  const o = document.createElement('option');
-  o.value = i; o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)`;
-  epSel.appendChild(o);
-});
-epSel.onchange = () => { selEpIdx = parseInt(epSel.value, 10); setVideo(selEpIdx); draw(); };
 
 function mkVideo(p) {
   const o = {
@@ -990,8 +1053,6 @@ evSel.onchange = () => {
   draw();
 };
 
-fillRollouts(0);
-updatePaneTitle();
 function buildOODList() {
   const box = document.getElementById('oodbox');
   if (!box) return;
@@ -1045,11 +1106,13 @@ function buildOODList() {
 }
 
 // 阈值滑块：重算全部触发点 → 重画星标、重建清单
-{
+function initAlphaUI() {
+  alpha = (META.alpha0 !== undefined) ? META.alpha0 : 0.05;
   const sl = document.getElementById('alpha');
   const lab = document.getElementById('alphav');
-  if (sl) { sl.value = String(Math.round(alpha * 1000)); }
+  if (sl) sl.value = String(Math.round(alpha * 1000));
   if (lab) lab.textContent = alpha.toFixed(3);
+  if (!sl) return;
   const apply = () => {
     alpha = Math.max(0.001, parseInt(sl.value, 10) / 1000);   // 1..200 → 0.001..0.200
     lab.textContent = alpha.toFixed(3);
@@ -1057,20 +1120,21 @@ function buildOODList() {
     buildOODList();
     draw();                     // 整屏重画：底图与游标必须同一套触发点
   };
-  if (sl) { sl.oninput = apply; sl.onchange = apply; }
+  sl.oninput = apply; sl.onchange = apply;
   const only = document.getElementById('onlyCurOOD');
   if (only) {
-    if (META.onlyCurOODDefault) only.checked = true;   // 触发局很多时默认只看当前
+    only.checked = !!META.onlyCurOODDefault;    // 触发局很多时默认只看当前
     only.onchange = () => { draw(); };
   }
 }
-buildOODList();
-if (META.autoplayFirstFire) {
+
+function autoPlayFirstFire() {
+  if (!META.autoplayFirstFire) { VB.load(''); return; }
   const f = (META.ev_fire || {})['0'] || {};
   const k = Object.keys(f).find(j => f[j] && f[j].idx >= 0);
   if (k !== undefined) {
-    evSel.value = k;
-    selEvIdx = parseInt(k, 10);
+    const s = document.getElementById('evsel');
+    s.value = k; selEvIdx = parseInt(k, 10);
     VB.load((BATCHES[0].rollouts[selEvIdx] || {}).file);
   }
 }
@@ -1092,7 +1156,74 @@ function updateLegend() {
   }
 }
 updateLegend();
-resize();
+
+// ---------- 页面启动 / 维数切换 ----------
+function loadDataset(key) {
+  const ds = (window.ROUTEC_DATA || {})[key];
+  if (!ds) { console.warn('数据未加载:', key); return; }
+  if (!applyDataset(ds, ds.meta)) return;
+  selEpIdx = -1; selEvIdx = -1; batchSel = 0;
+  computeExt(); allocPanes();
+  cmode = META.cmode0 || 'cls';
+  refreshData();
+  autoPlayFirstFire();
+  resize();
+  const note = document.getElementById('dimnote');
+  if (note && META.dimNote) {
+    note.style.display = '';
+    note.innerHTML = `<span>${META.dimNote[0]}</span><b>${META.dimNote[1]}</b>`;
+  }
+}
+
+// 按需注入 <script src>（file:// 下 fetch 会被 CORS 拦，但 script 标签可以）
+function ensureDimScript(key, cb) {
+  if ((window.ROUTEC_DATA || {})[key]) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = (SHELL.dimDir || 'routeC_latents') + '/' + key + '.js';
+  s.onload = () => cb();
+  s.onerror = () => {
+    console.error('加载失败', s.src);
+    const note = document.getElementById('dimnote');
+    if (note) { note.style.display = ''; note.innerHTML = `<span>数据文件缺失</span><b>${key}.js</b>`; }
+  };
+  document.head.appendChild(s);
+}
+
+function bootSingle() {
+  if (!DATA || !DATA.pc) return;
+  if (!applyDataset(DATA)) return;
+  selEpIdx = -1; selEvIdx = -1; batchSel = 0;
+  computeExt(); allocPanes();
+  cmode = META.cmode0 || 'cls';
+  refreshData(); autoPlayFirstFire(); resize();
+}
+
+function bootDims() {
+  const man = window.ROUTEC_MANIFEST;
+  const box = document.getElementById('dimbox');
+  const sel = document.getElementById('dimsel');
+  if (!man || !man.dims || !man.dims.length || !box || !sel) {   // 无清单：单数据集模式（内嵌数据）
+    bootSingle();
+    return;
+  }
+  box.style.display = '';
+  sel.innerHTML = man.dims.map(d =>
+    `<option value="${d.key}">${d.latent} 维（${d.note || ''}）</option>`).join('');
+  const pick = man.default || man.dims[0].key;
+  sel.value = pick;
+  sel.onchange = () => {
+    const k = sel.value;
+    ensureDimScript(k, () => {
+      const d = (window.ROUTEC_MANIFEST.dims || []).find(x => x.key === k) || {};
+      const ds = window.ROUTEC_DATA[k];
+      if (ds) ds.meta = Object.assign({}, ds.meta, { dimNote: ['潜空间维数', d.latent + ' 维'] });
+      loadDataset(k);
+    });
+  };
+  ensureDimScript(pick, () => loadDataset(pick));
+}
+
+bootDims();
 
 </script>
 </body>

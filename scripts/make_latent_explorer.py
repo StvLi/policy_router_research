@@ -155,7 +155,7 @@ def main():
                 score=b64(SCORE, np.float32), ang=b64(ang, np.float32), ev=ev, ev2=ev2)
 
     html = load_template().replace("__META__", json.dumps(meta, ensure_ascii=False)) \
-                          .replace("__DATA__", json.dumps(DATA))
+                          .replace("__DATA__", json.dumps(DATA)).replace("__PRELOAD__", "")
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     open(a.out, "w").write(html)
     print(f"写出 {a.out}  ({os.path.getsize(a.out)/1024:.0f} KB)")
