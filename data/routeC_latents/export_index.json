@@ -1,0 +1,78 @@
+[
+ {
+  "latent": 32,
+  "seed": 0,
+  "n_demo": 10590,
+  "n_ood": 1228,
+  "n_eval": 1214,
+  "pca_explained": [
+   0.09170820564031601,
+   0.08895532786846161,
+   0.07536857575178146
+  ],
+  "latent_std": 0.08121982216835022,
+  "files": {
+   "vae": "latent32_vae.pt",
+   "demo": "latent32_demo.npz",
+   "ood": "latent32_ood.npz",
+   "eval": "latent32_eval.npz"
+  }
+ },
+ {
+  "latent": 16,
+  "seed": 0,
+  "n_demo": 10590,
+  "n_ood": 1228,
+  "n_eval": 1214,
+  "pca_explained": [
+   0.11682877689599991,
+   0.10822202265262604,
+   0.0913885310292244
+  ],
+  "latent_std": 0.08211024850606918,
+  "files": {
+   "vae": "latent16_vae.pt",
+   "demo": "latent16_demo.npz",
+   "ood": "latent16_ood.npz",
+   "eval": "latent16_eval.npz"
+  }
+ },
+ {
+  "latent": 8,
+  "seed": 0,
+  "n_demo": 10590,
+  "n_ood": 1228,
+  "n_eval": 1214,
+  "pca_explained": [
+   0.18552899360656738,
+   0.15174129605293274,
+   0.13799457252025604
+  ],
+  "latent_std": 0.08637110143899918,
+  "files": {
+   "vae": "latent8_vae.pt",
+   "demo": "latent8_demo.npz",
+   "ood": "latent8_ood.npz",
+   "eval": "latent8_eval.npz"
+  }
+ },
+ {
+  "latent": 4,
+  "seed": 0,
+  "n_demo": 10590,
+  "n_ood": 1228,
+  "n_eval": 1214,
+  "pca_explained": [
+   0.31636038422584534,
+   0.28460314869880676,
+   0.22026054561138153
+  ],
+  "latent_std": 0.09737909585237503,
+  "files": {
+   "vae": "latent4_vae.pt",
+   "demo": "latent4_demo.npz",
+   "ood": "latent4_ood.npz",
+   "eval": "latent4_eval.npz"
+  }
+ }
+]

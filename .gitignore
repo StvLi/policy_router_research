@@ -21,3 +21,7 @@ docs/assets/videos/head_webm/
 data/eval25/videos/
 data/eval25/states.jsonl
 data/eval25/scores.json
+
+# 路线 C 隐空间导出（约 40 MB，供可视化；按需单独分发）
+data/routeC_latents/*.npz
+data/routeC_latents/*.pt
