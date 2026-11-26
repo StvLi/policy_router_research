@@ -42,24 +42,51 @@ def fire_point(p, a=ALPHA_FIRE):
     return -1
 
 
-def mahalanobis_p(Z_fit, Z_cal, Z_tgt, shrink=0.1):
-    """用 demo 潜变量估计高斯，返回目标帧的马氏距离与共形 p。"""
-    mu = Z_fit.mean(0)
-    X = Z_fit - mu
-    cov = (X.T @ X) / max(1, len(X) - 1)
-    d = cov.shape[0]
-    cov = (1 - shrink) * cov + shrink * np.eye(d) * np.trace(cov) / d
-    # 数值稳定：用 Cholesky 求马氏距离
-    L = np.linalg.cholesky(cov)
+def progress_knn_p(Z_ref, prog_ref, ep_ref, Z_cal, prog_cal, ep_cal, Z_tgt, prog_tgt, ep_tgt,
+                   k=5, band=0.10, nbins=20):
+    """按**进度条件化**的 kNN 新颖度 + 共形 p。
 
-    def md(A):
-        Y = np.linalg.solve(L, (A - mu).T)
-        return np.sqrt((Y ** 2).sum(0))
+    why：潜空间是多峰的（不同阶段各占一坨），全局高斯/全局 kNN 会把"正常但换阶段"也当成异常。
+          先按集内归一化进度切带，再在同带内找最近邻，才是"这个进度上有没有像样的演示帧"。
+    返回 (score_tgt, p_tgt)，p 用 cal 的分数做共形。
+    """
+    edges = np.linspace(0.0, 1.0, nbins + 1)
+    def binof(p):
+        b = np.clip(np.digitize(p, edges) - 1, 0, nbins - 1)
+        return b
+    ref_bins = binof(prog_ref)
+    groups = [np.where(ref_bins == b)[0] for b in range(nbins)]
 
-    cal = md(Z_cal)
-    s = md(Z_tgt)
-    p = (1.0 + (cal[None, :] >= s[:, None]).sum(1)) / (len(cal) + 1.0)
-    return s, p
+    def stat(Q, QP, QEP):
+        out = np.empty(len(Q), np.float32)
+        qb = binof(QP)
+        for i in range(len(Q)):
+            b = qb[i]
+            lo, hi = max(0, b - int(round(band * nbins))), min(nbins, b + int(round(band * nbins)) + 1)
+            idx = np.concatenate([groups[j] for j in range(lo, hi) if len(groups[j])])
+            idx = idx[ep_ref[idx] != QEP[i]]            # 留一集，避免同集自比
+            if len(idx) < k + 1:
+                idx = np.where(ep_ref != QEP[i])[0]
+            if len(idx) == 0:
+                out[i] = 1e9; continue
+            diff = Z_ref[idx] - Q[i]
+            dd = (diff * diff).sum(1)
+            kk = min(k, len(dd)) - 1
+            out[i] = np.sqrt(np.partition(dd, kk)[kk])
+        return out
+
+    sc = stat(Z_cal, prog_cal, ep_cal)
+    st = stat(Z_tgt, prog_tgt, ep_tgt)
+    p = (1.0 + (sc[None, :] >= st[:, None]).sum(1)) / (len(sc) + 1.0)
+    return st, p
+
+
+def progress_of(T, EP):
+    out = np.zeros(len(T), np.float32)
+    for ep in np.unique(EP):
+        m = EP == ep
+        out[m] = (T[m] - T[m].min()) / max(1, T[m].max() - T[m].min())
+    return out
 
 
 def build(files, info):
@@ -76,15 +103,21 @@ def build(files, info):
     SUCC = ev["SUCCESS"] if "SUCCESS" in ev.files else np.zeros(len(EPe), bool)
 
     # ---- 逐帧 p：优先用交接包给的 S/P，否则潜空间马氏距离 ----
-    p_src = "handover S/P" if ("S" in demo.files and "P" in demo.files) else "latent 马氏距离（回退）"
+    p_src = "handover S/P" if ("S" in demo.files and "P" in demo.files) else \
+            "latent 进度条件 kNN（回退）"
     if "S" in demo.files and "P" in demo.files:
         S_tr, P_tr = demo["S"], demo["P"]
         S_ev, P_ev = ev["S"], ev["P"]
     else:
         cal_mask = (EPd % CAL_EVERY) == 0
-        S_tr, P_tr = mahalanobis_p(Ztr[~cal_mask], Ztr[cal_mask], Ztr)
-        _, P_ev = mahalanobis_p(Ztr[~cal_mask], Ztr[cal_mask], Zev)
-        S_ev = np.zeros(len(Zev), np.float32)
+        Pd = progress_of(Td, EPd)
+        Pe = progress_of(Te, EPe)
+        S_tr, P_tr = progress_knn_p(Ztr[~cal_mask], Pd[~cal_mask], EPd[~cal_mask],
+                                    Ztr[cal_mask], Pd[cal_mask], EPd[cal_mask],
+                                    Ztr, Pd, EPd)
+        S_ev, P_ev = progress_knn_p(Ztr[~cal_mask], Pd[~cal_mask], EPd[~cal_mask],
+                                    Ztr[cal_mask], Pd[cal_mask], EPd[cal_mask],
+                                    Zev, Pe, EPe)
 
     # ---- 训练集排序 ----
     o = np.lexsort((Td, EPd))
@@ -162,7 +195,8 @@ def build(files, info):
                 p=b64(np.asarray(P_ev, np.float32), np.float32)),
         ev2=dict(n=0),
     )
-    note = (f"{len(eps_tr)} 集 demo · α={ALPHA_FIRE} 检出 {tp}/{n_fail} · 3D≈{sum(pcvar):.0f}%")
+    note = (f"{len(eps_tr)} 集 demo · α={ALPHA_FIRE} 检出 {tp}/{n_fail} · 3D≈{sum(pcvar):.0f}%"
+            + (" · p=进度条件kNN" if "latent" in p_src else " · p=真实重建分"))
     man = dict(key=f"d{N}", latent=N, n_tr=int(len(PCtr)), n_ev=int(len(PCev)),
                n_ood=int(len(PCoo)), n_ep=int(len(eps_tr)), pc_var=pcvar,
                n_fail=n_fail, tp=tp, note=note, p_src=p_src)
