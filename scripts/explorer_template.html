@@ -197,6 +197,11 @@
     </div>
 
     <div class="grp">
+      <div class="lbl">左栏叠加</div>
+      <label class="row"><input type="checkbox" id="oodShow" checked> 显示 OOD 任务点（红）</label>
+    </div>
+
+    <div class="grp">
       <div class="lbl">评测栏（右）</div>
       <label class="row"><input type="checkbox" id="evShow" checked> 显示评测点（白）</label>
       <label class="row"><input type="checkbox" id="evLines" checked> 连成轨迹</label>
@@ -280,6 +285,7 @@ let OFF = new Int32Array(1), TT = new Float32Array(0), SC = new Float32Array(0);
 let SCp = null, ANG = new Float32Array(0), N = 0;
 let EV = {}, EVZ = new Float32Array(0), EVT = new Float32Array(0), EVEP = new Int32Array(0);
 let EVOFF = new Int32Array(1), EVP = null, EVOK = new Uint8Array(0), EVCFG = new Uint8Array(0), NE = 0;
+let OODZ = new Float32Array(0), OODN = 0;
 let E2 = {}, E2Z = new Float32Array(0), E2T = new Float32Array(0), E2EP = new Int32Array(0);
 let E2OFF = new Int32Array(1), E2OK = new Uint8Array(0), N2 = 0;
 let BATCHES = [];
@@ -313,6 +319,9 @@ function applyDataset(ds, dimmeta) {
   EVOK = EV.n ? dec(EV.ok, Uint8Array) : new Uint8Array(0);
   EVCFG = EV.n ? dec(EV.cfg, Uint8Array) : new Uint8Array(0);
   NE = EV.n || 0;
+
+  OODZ = DATA.ood && DATA.ood.n ? dec(DATA.ood.z, Float32Array) : new Float32Array(0);
+  OODN = (DATA.ood && DATA.ood.n) || 0;
 
   E2 = DATA.ev2 || {};
   E2Z = E2.n ? dec(E2.z, Float32Array) : new Float32Array(0);
@@ -358,6 +367,7 @@ function computeExt() {
   let e = 0;
   for (let i = 0; i < 3 * N; i++) e = Math.max(e, Math.abs(PC[i]));
   if (NE) for (let i = 0; i < 3 * NE; i++) e = Math.max(e, Math.abs(EVZ[i]));
+  for (let i = 0; i < 3 * OODN; i++) e = Math.max(e, Math.abs(OODZ[i]));
   ext = e || 1;
 }
 computeExt();
@@ -482,6 +492,32 @@ function drawStaticA() {
   const base = parseFloat(document.getElementById('psize').value);
   const dimOn = document.getElementById('dim').checked;
   let shown = 0;
+
+  // OOD（另一个任务）叠在左栏：位置有意义，颜色区分，默认开
+  const oodShow = document.getElementById('oodShow');
+  if (OODN && (!oodShow || oodShow.checked)) {
+    const n = OODN;
+    if (!P.ood) { P.ood = { sx: new Float32Array(n), sy: new Float32Array(n),
+                            ssz: new Float32Array(n), zrot: new Float32Array(n) }; P.oodN = n; }
+    if (P.oodN !== n) { P.ood = null; P.oodN = -1; }
+    const { cyw, syw, cp, sp, scale0, cx, cyy, e } = cam;
+    for (let i = 0; i < n; i++) {
+      const x = OODZ[3*i], y = OODZ[3*i+1], z = OODZ[3*i+2];
+      const x1 = cyw * x + syw * z, z1 = -syw * x + cyw * z;
+      const y2 = cp * y - sp * z1, z2 = sp * y + cp * z1;
+      P.ood.zrot[i] = z2;
+      const f = fov / (fov + z2 * e * 1.2);
+      P.ood.sx[i] = cx + x1 * scale0 * f;
+      P.ood.sy[i] = cyy - y2 * scale0 * f;
+      P.ood.ssz[i] = f;
+    }
+    g.fillStyle = '#e74c3c'; g.globalAlpha = 0.55;
+    for (let i = 0; i < n; i++) {
+      const s = base * 0.9 * P.ood.ssz[i] * DPR;
+      g.fillRect(P.ood.sx[i] - s/2, P.ood.sy[i] - s/2, s, s);
+    }
+    g.globalAlpha = 1;
+  }
   for (let k = 0; k < N; k++) {
     const i = ord[k];
     if (cmode === 'cls' && !clsVisible[CLS[i]]) continue;
@@ -892,7 +928,7 @@ function hover(e) {
   tip.style.top = (hit.py + 14) + 'px';
   if (P === PA) {
     tip.innerHTML = `训练 · ${META.ep_names[EPI[best]]}　t=${TT[best].toFixed(2)}s<br>`
-      + (META.no_cls ? '' : `类 c${CLS[best]}　`)
+      + (META.no_cls ? '' : `${(META.cls_names && META.cls_names[CLS[best]]) || 'c'+CLS[best]}　`)
       + `相位 ${(ANG[best]*180/Math.PI).toFixed(0)}°<br>`
       + (META.no_cls ? `异常分数 ${SC[best].toFixed(3)}` : `不典型度 ${SC[best].toFixed(3)}`);
   } else {
@@ -933,12 +969,13 @@ function refreshData() {
   } else {
     document.getElementById('clsbox').style.display = '';
     clsBox.innerHTML = '';
-    clsList.forEach(c => {
+    const cname = c => (META.cls_names && META.cls_names[c]) ? META.cls_names[c] : `c${c}`;
+  clsList.forEach(c => {
       const row = document.createElement('label');
       row.className = 'row';
       row.innerHTML = `<input type="checkbox" checked data-c="${c}">
         <span class="sw" style="background:${clsColor[c]}"></span>
-        <span>c${c}</span><span class="cnt">${(META.cls_counts[c]||0).toLocaleString()}</span>`;
+        <span>${cname(c)}</span><span class="cnt">${(META.cls_counts[c]||0).toLocaleString()}</span>`;
       row.querySelector('input').onchange = ev => { clsVisible[c] = ev.target.checked; draw(); };
       clsBox.appendChild(row);
     });
@@ -1240,7 +1277,7 @@ function autoPlayFirstFire() {
 function updateLegend() {
   const el = document.getElementById('legend');
   if (cmode === 'cls') {
-    el.innerHTML = clsList.map(c => `<div><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${clsColor[c]};margin-right:5px"></span>c${c}</div>`).join('');
+    el.innerHTML = clsList.map(c => `<div><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${clsColor[c]};margin-right:5px"></span>${(META.cls_names && META.cls_names[c]) || 'c'+c}</div>`).join('');
   } else if (cmode === 'ep') {
     el.textContent = '每个 episode 一种颜色（循环取色）';
   } else {
@@ -1267,7 +1304,9 @@ function updateStats() {
     `<span class="chip">训练 <b>${(META.n || N).toLocaleString()}</b> 帧 / ${META.n_ep || '?'} 集</span>`
     + `<span class="chip">测试 <b>${rolls.length}</b> 局（失败 ${nFail}）</span>`
     + (hit >= 0 ? `<span class="chip">α=<b>${alpha.toFixed(3)}</b> 检出 <b>${hit}</b>/${nFail}</span>` : '')
-    + (dimTxt ? `<span class="chip">潜变量 <b>${dimTxt}</b> · PC1-3 ${(META.pc_var||[]).join('/')}%</span>` : '');
+    + (dimTxt ? `<span class="chip">潜变量 <b>${dimTxt}</b> · PC1-3 ${(META.pc_var||[]).join('/')}%</span>` : '')
+    + (META.pSource && /latent/.test(META.pSource)
+        ? `<span class="chip" style="border-color:#5a3a2a;color:#e0a33a">p = 潜空间启发式（非 VAE 重建分）</span>` : '');
 }
 
 {

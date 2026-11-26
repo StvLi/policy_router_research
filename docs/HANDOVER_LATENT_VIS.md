@@ -25,6 +25,9 @@
 | `latent{N}_vae.pt` | 训练好的 VAE（encoder+decoder 全权重、标准化参数、PCA 基、校准分数） | 9.5 MB |
 | `export_index.json` | 汇总：每档的帧数、PCA 解释方差、latent 标准差 | 1.4 KB |
 
+> **缺一项（影响判定类功能）**：三个 npz 里都**没有逐帧的 VAE 重建分 `S` 与共形 p 值 `P`**。
+> 只有 `Z`/`PC3` 时，可视化方无法复现"哪一帧不像演示"，只能画几何。详见 §9.1。
+
 `N ∈ {32, 16, 8, 4}`，四档用的是**同一份** 2048 维输入、同一划分、同一种子（seed 0），所以可以直接横向比。
 
 ---
@@ -41,7 +44,9 @@
 | `T` | (10590,) | 该集内的**原始帧号**（stride 5 采样，25 fps） |
 | `CAP` | (10590,) | 阶段标签（定长字符串，见下） |
 
-`CAP` 取值：`pick_headphones`(12.6%) / `hang_headphones`(10.0%) / `close_laptop`(21.9%) / `pick_laptop`(21.9%) / `handover`(14.7%) / `place_into_stand`(17.9%) / `other`(1.1%) / `unknown`。
+`CAP` 取值（**按实际文件核对过**）：`pick_headphones`(1,336) / `close_laptop`(2,318) / `pick_laptop`(2,319) /
+`place_into_stand`(1,892) / `handover`(1,553) / `hang_headphones`(1,055) / `other`(115) / **`before_start`(2)**。
+注意：**没有 `unknown`**，末尾那个 2 帧的小类是 `before_start`（前一份说明写错了）。
 由演示集的分段标注（秒）换算到帧号得到，可用于按阶段着色。
 
 ### `latent{N}_ood.npz`（OOD）
@@ -148,3 +153,80 @@ with torch.no_grad():
 | 路线 C 设计与工程事实 | `docs/ROUTE_C_VLA_EMBEDDING_VAE.md` |
 | 导出脚本 | `scripts/routeC_export_latents.py` |
 | 维度扫描脚本 | `scripts/routeC_latent_sweep.py` |
+
+---
+
+## 9. 可视化侧的补充与实测反馈（2026-11-26，接手方补写）
+
+这一节由可视化 session 补写：记录**消费交接包时缺什么、实测到什么**，以及已经做好的接入方式。
+四个维数（32/16/8/4）已经全部接进交互页 `docs/assets/routeC_latent_explorer.html`，页眉可切维数。
+
+### 9.1 最关键缺口：逐帧 `S` / `P`（重建分与共形 p）
+
+**现象**：只有 `Z`/`PC3` 时，页面的"判定层"（α 滑块、OOD 星标、检出计数）没有输入。
+我先用**潜空间启发式**顶上，效果很差，正好反证了"判定信号在重建残差里、不在潜空间几何里"：
+
+| p 的来源 | α=0.12 时 7 局失败的检出 |
+|---|---|
+| VAE 重建分 + 共形 p（正式链路，另一份 25 局数据） | **20–24 / 24** |
+| 潜空间**马氏距离** + 共形 p（本轮回退方案） | **1 / 7** |
+| 潜空间 **kNN 距离**（k=10）+ 共形 p（试过，更差） | **0 / 7**（还会误报成功局） |
+
+（回退方案用"每 4 集留 1 集"做校准，与交接包的 75/25 划分一致。）
+
+**请求**：在导出脚本里给三个 npz 各加两个逐帧字段即可，消费方会自动优先采用（不用改前端代码）：
+
+```python
+np.savez_compressed(out, Z=..., PC3=..., EP=..., T=..., CAP=...,
+                    S=score_per_frame,            # vae_nll：MSE(dec(mu), x) + beta*KL
+                    P=p_per_frame)                # conformal_p(S, ck["cal"])
+```
+
+- `S`/`P` 的口径要与 `scripts/routeC_vae_failure.py` 的 `vae_nll` + `conformal_p` 完全一致，
+  否则页面上的 α 与报告里的 α 不是同一个东西。
+- 有了 `S`/`P`，页面会自动切换成"真实重建分"模式（顶栏那条橙色告警会自动消失）。
+
+### 9.2 浏览器读不了 `.npz`：需要一步转换（已提供）
+
+可视化页是 `file://` 打开的静态页，**读不了 `.npz`（二进制 + zlib）**，`fetch()` 也会被 CORS 拦。
+所以交接包不能直接被前端消费，中间必须有一层转换。已经写好：
+
+```bash
+python3 scripts/build_routec_handover_js.py        # data/routeC_latents/*.npz → docs/assets/routeC_latents/d{32,16,8,4}.js + manifest.js
+python3 scripts/make_routeC_latent_explorer.py     # 重新生成外壳页
+```
+
+- 转换后用 `PC3`（**你们拟合的那套基**），不再重算 PCA，保证页面上看到的就是你们图里的坐标。
+- 每档产物约 **520 KB**（10,590 demo + 1,228 OOD + 1,214 eval，含逐帧 p），四档共 ~2 MB，可入库。
+- 原始 `data/routeC_latents/`（40 MB）仍按 `.gitignore` 不入库。
+
+### 9.3 评测视频路径（页面播放需要）
+
+页面播的是 8 局评测的头/左腕/右腕视频，命名规则固定（已在仓库内，共 75 个文件）：
+
+```
+docs/assets/videos/eval25/episode_<layout:07d>_cam_{head|left_wrist|right_wrist}_{success|fail}.mp4
+```
+
+`success`/`fail` 由官方 `SCORE >= 1.0` 判定——这与 `latent{N}_eval.npz` 的 `SUCCESS` 一致即可对齐。
+若后续评测局数变了（例如另外那份 25 局），请一并说明文件名规则，否则页面只能播头部。
+
+### 9.4 其它建议（不影响渲染，但影响可读性）
+
+| 项 | 建议 |
+|---|---|
+| **数组顺序** | 现在 demo 是 (EP, T) 升序；请在文档里写明"顺序不作保证/或保证 (EP,T) 升序"，消费方需要按 `EP` 切段算偏移 |
+| **时间单位** | 明确 `t_sec = T / 25`（stride 5 采样，25 fps），页面进度条直接用秒，不是采样点序号 |
+| **OOD 任务名** | 现在只写 `Arrange the numbers…`；请给**完整指令文本**——VLA 的表征依赖 prompt，换一句指令就不是同一分布 |
+| **重复性** | 同一批帧重抽特征**不是逐位可复现**（实测同帧 embedding 最大差 1.25、中位 0.25，但 VAE 打分几乎不变，逐局 p 中位差 <0.005）。建议在 §7 局限里加一句，避免下游误以为能逐位复算 |
+| **`CAP` 的 2 帧 `before_start`** | 占比极低，页面图例里会单独列一行；也可以在导出时并入 `other` 以简化图例 |
+| **`PROGRESS` 只给了 eval** | 如果想要"demo 按进度着色"，demo 也需要一份同类归一化进度（现在页面用 `T/T_max` 近似） |
+
+### 9.5 已经做好的页面能力（对应 §5 的四张图）
+
+| 交接文档建议的图 | 页面现状 |
+|---|---|
+| ① 同维度三色叠加（demo / OOD / 评测） | 左栏 demo 按阶段着色 + **OOD 红点叠加**（可关）；右栏 8 条评测轨迹（白点，选中琥珀高亮） |
+| ② 四档并排 | 顶栏下拉切换 32/16/8/4，**每档自动换成该档的 PCA 基**，标题与顶栏实时显示 `PC1-3` 解释率 |
+| ③ demo 按阶段着色 | 已按 `CAP` 着色，图例用阶段名（`before_start`/`close_laptop`/…），可逐类显隐 |
+| ④ 评测按得分着色 / 时间轴 | 右栏按 layout 上色 + 视频（头/左/右三视角）+ 琥珀游标跟随；顶栏显示"失败 7 局" |
