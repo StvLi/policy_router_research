@@ -268,7 +268,7 @@
 
 <script src="routeC_latents/manifest.js"></script>
 <script>
-const SHELL = {"pageTitle": "路线 C · 潜空间浏览器", "title": "π0 中间表征 → VAE 潜变量 → 训练集 PCA 前 3 维（按维数切换）", "videoDir": "videos/head", "ev_videoDir": "videos/eval25", "eval25VideoDir": "videos/eval25", "ev_cams": ["head", "left_wrist", "right_wrist"], "train_cams": ["head"], "defaultDim": "x32", "dimDir": "routeC_latents"};            // 页面级配置：视频目录、视角、维数清单
+const SHELL = {"pageTitle": "路线 C · 潜空间浏览器", "title": "π0 中间表征 → VAE 潜变量 → 训练集 PCA 前 3 维（按维数切换）", "videoDir": "videos/head", "ev_videoDir": "videos/eval25", "eval25VideoDir": "videos/eval25", "ev_cams": ["head", "left_wrist", "right_wrist"], "train_cams": ["head"], "defaultDim": "d32", "dimDir": "routeC_latents"};            // 页面级配置：视频目录、视角、维数清单
 let META = SHELL;                  // 当前数据集的 meta（与 SHELL 合并后）
 let DATA = ({} || {});
 
@@ -1305,8 +1305,7 @@ function updateStats() {
     + `<span class="chip">测试 <b>${rolls.length}</b> 局（失败 ${nFail}）</span>`
     + (hit >= 0 ? `<span class="chip">α=<b>${alpha.toFixed(3)}</b> 检出 <b>${hit}</b>/${nFail}</span>` : '')
     + (dimTxt ? `<span class="chip">潜变量 <b>${dimTxt}</b> · PC1-3 ${(META.pc_var||[]).join('/')}%</span>` : '')
-    + (META.pSource && /latent/.test(META.pSource)
-        ? `<span class="chip" style="border-color:#5a3a2a;color:#e0a33a">p = 潜空间启发式（非 VAE 重建分）</span>` : '');
+    + (META.pSource ? `<span class="chip">判定 <b>${META.pSource}</b></span>` : '');
 }
 
 {

@@ -34,6 +34,8 @@ def main():
     ap.add_argument("--alpha-src", default="/tmp/latent")
     ap.add_argument("--out", default="docs/assets/routeC_latents")
     ap.add_argument("--keep", default="d32", help="默认选中的 key")
+    ap.add_argument("--with-alpha", action="store_true",
+                    help="额外挂上 α 核验版（20 集/25 局/真实重建分）；默认不挂——页面只保留一种评价指标")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
 
@@ -48,7 +50,7 @@ def main():
     data_keys += [e["key"] for e in man["dims"]]
 
     # ---- 2) α 核验版（有真实重建分） ----
-    if a.alpha_src and os.path.isdir(a.alpha_src):
+    if a.with_alpha and a.alpha_src and os.path.isdir(a.alpha_src):
         print("== α 核验版 ==", flush=True)
         tmp = "/tmp/_xjslatents"
         os.makedirs(tmp, exist_ok=True)

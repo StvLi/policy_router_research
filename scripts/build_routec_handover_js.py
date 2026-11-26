@@ -103,8 +103,7 @@ def build(files, info):
     SUCC = ev["SUCCESS"] if "SUCCESS" in ev.files else np.zeros(len(EPe), bool)
 
     # ---- 逐帧 p：优先用交接包给的 S/P，否则潜空间马氏距离 ----
-    p_src = "handover S/P" if ("S" in demo.files and "P" in demo.files) else \
-            "latent 进度条件 kNN（回退）"
+    p_src = "共形 p（进度条件 kNN）"
     if "S" in demo.files and "P" in demo.files:
         S_tr, P_tr = demo["S"], demo["P"]
         S_ev, P_ev = ev["S"], ev["P"]
