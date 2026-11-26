@@ -133,6 +133,7 @@ def main():
     ap.add_argument("--iters", type=int, default=6000)
     ap.add_argument("--beta", type=float, default=1.0)
     ap.add_argument("--alpha", type=float, default=0.05)
+    ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="/home/syt/e2/sweep.json")
     a = ap.parse_args()
 
@@ -146,8 +147,8 @@ def main():
     results = []
     for latent in [int(x) for x in a.latents.split(",")]:
         print(f"\n===== latent = {latent} =====", flush=True)
-        m = train_one(demo, latent, a.iters, a.beta)
-        rec = dict(latent=latent, n_train=m["n_train"], n_cal=m["n_cal"],
+        m = train_one(demo, latent, a.iters, a.beta, seed=a.seed)
+        rec = dict(latent=latent, seed=a.seed, n_train=m["n_train"], n_cal=m["n_cal"],
                    latent_moments=m["latent_moments"])
 
         # ID 留出（校准集就是测试集：路线 A 的口径，标注在文档里）
