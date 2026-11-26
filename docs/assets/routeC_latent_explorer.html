@@ -15,7 +15,7 @@
   #tbrand span { font-size:11px; color:#7c8698; white-space:nowrap; overflow:hidden;
                  text-overflow:ellipsis; max-width:40vw; }
   #dimbox { display:flex; align-items:center; gap:8px; font-size:11.5px; color:#8b95a8; white-space:nowrap; }
-  #dimbox select { width:auto; min-width:250px; font-size:12px; padding:5px 6px; }
+  #dimbox select { width:auto; min-width:360px; max-width:46vw; font-size:12px; padding:5px 6px; }
   #tstats { display:flex; gap:8px; margin-left:auto; }
   .chip { background:#161a24; border:1px solid #232a38; border-radius:999px;
           padding:4px 11px; font-size:11px; color:#9aa5b8; white-space:nowrap; }
@@ -268,7 +268,7 @@
 
 <script src="routeC_latents/manifest.js"></script>
 <script>
-const SHELL = {"pageTitle": "路线 C · 潜空间浏览器", "title": "π0 中间表征 → VAE 潜变量 → 训练集 PCA 前 3 维（按维数切换）", "videoDir": "videos/head", "ev_videoDir": "videos/eval25", "eval25VideoDir": "videos/eval25", "ev_cams": ["head", "left_wrist", "right_wrist"], "train_cams": ["head"], "defaultDim": "d32", "dimDir": "routeC_latents"};            // 页面级配置：视频目录、视角、维数清单
+const SHELL = {"pageTitle": "路线 C · 潜空间浏览器", "title": "π0 中间表征 → VAE 潜变量 → 训练集 PCA 前 3 维（按维数切换）", "videoDir": "videos/head", "ev_videoDir": "videos/eval25", "eval25VideoDir": "videos/eval25", "ev_cams": ["head", "left_wrist", "right_wrist"], "train_cams": ["head"], "defaultDim": "lof-d32", "dimDir": "routeC_latents"};            // 页面级配置：视频目录、视角、维数清单
 let META = SHELL;                  // 当前数据集的 meta（与 SHELL 合并后）
 let DATA = ({} || {});
 
@@ -1305,7 +1305,8 @@ function updateStats() {
     + `<span class="chip">测试 <b>${rolls.length}</b> 局（失败 ${nFail}）</span>`
     + (hit >= 0 ? `<span class="chip">α=<b>${alpha.toFixed(3)}</b> 检出 <b>${hit}</b>/${nFail}</span>` : '')
     + (dimTxt ? `<span class="chip">潜变量 <b>${dimTxt}</b> · PC1-3 ${(META.pc_var||[]).join('/')}%</span>` : '')
-    + (META.pSource ? `<span class="chip">判定 <b>${META.pSource}</b></span>` : '');
+    + (META.pSource ? `<span class="chip">判定 <b>${META.pSource}</b></span>` : '')
+    + (META.dimKey ? `<span class="chip">数据 <b>${META.dimKey}</b></span>` : '');
 }
 
 {
@@ -1355,6 +1356,7 @@ function loadDataset(key) {
   const ds = (window.ROUTEC_DATA || {})[key];
   if (!ds) { console.warn('数据未加载:', key); return; }
   if (!applyDataset(ds, ds.meta)) return;
+  META.dimKey = key;
   selEpIdx = -1; selEvIdx = -1; batchSel = 0;
   computeExt(); allocPanes();
   cmode = META.cmode0 || 'cls';
@@ -1400,8 +1402,18 @@ function bootDims() {
     return;
   }
   box.style.display = '';
-  sel.innerHTML = man.dims.map(d =>
-    `<option value="${d.key}">${d.latent} 维（${d.note || ''}）</option>`).join('');
+  const byKey = {};
+  (man.dims || []).forEach(d => { byKey[d.key] = d; });
+  const groups = (man.groups && man.groups.length)
+    ? man.groups
+    : [{ label: '', keys: (man.dims || []).map(d => d.key) }];
+  sel.innerHTML = groups.map(g => {
+    const opts = (g.keys || []).filter(k => byKey[k]).map(k => {
+      const d = byKey[k];
+      return `<option value="${d.key}">${d.latent} 维 · ${d.note || ''}</option>`;
+    }).join('');
+    return (g.label && opts) ? `<optgroup label="${g.label}">${opts}</optgroup>` : opts;
+  }).join('');
   const pick = man.default || man.dims[0].key;
   sel.value = pick;
   sel.onchange = () => {

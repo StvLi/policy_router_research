@@ -198,6 +198,29 @@ v2 只用 $z$ 的**局部几何**，不含任何时间量，因此：
 - DAgger 迭代时，参考集只需"把新采的正常轨迹并进去"（统计量是局部密度比，不依赖时间轴），
   但要注意**参考集会不断膨胀**，实现上需要滑窗/下采样或子采样索引。
 
+## 6.4 前端数据组织（同一评估方法集中成一组）
+
+`docs/assets/routeC_latents/manifest.js` 里每套数据带 `group`，前端下拉用 `<optgroup>` 按组展示，
+**组内只有潜空间维数在变**，跨组不可比（统计量不同）。文件名 = `<方法>-d<维数>.js`：
+
+| 组（下拉标题） | 文件 | 说明 |
+|---|---|---|
+| 共形 p · 局部密度归一化（LOF，无进度）★ | `lof-d32/d16/d8/d4.js` | **默认**，§6.0 的 v2 |
+| 共形 p · 进度条件 kNN（需要进度 u） | `prog-d32/d16/d8/d4.js` | §2–§3 的 v1 |
+| 共形 p · 全局 kNN（无 u 的朴素对照） | `glob-d32.js` | 只建 32 维，用来展示"直接去掉 u"的崩坏 |
+| VAE 重建分（v0，20 集 / 25 局） | `mse-x32.js`（可选，`--with-mse`） | 旧口径，需下游能算 MSE |
+
+```bash
+python3 scripts/build_routec_all_js.py                 # LOF + 进度条件 + 全局(d32)
+python3 scripts/build_routec_all_js.py --stats lof     # 只留推荐方案
+python3 scripts/build_routec_all_js.py --with-mse      # 再加 v0 对照（需 /tmp/latent）
+python3 scripts/make_routeC_latent_explorer.py         # 重新生成外壳页
+```
+
+- 每套约 616 KB（10,590 demo + 1,228 OOD + 3,951 eval，含逐帧 `S`/`P`），9 套共 5.5 MB。
+- 顶栏右上角有 `数据 <key>` 与 `判定 <p 来源>` 两个 chip，调试时一眼确认自己在看哪一套。
+- 扫每组 4 档约 10 s（LOF）、进度条件约 6 s；`--dims` 可只重建指定维数。
+
 ## 7. 接口契约（前端/下游按这个读）
 
 **输入**：每档一个 `.npz`，字段

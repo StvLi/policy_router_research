@@ -130,7 +130,7 @@ def progress_of(T, EP):
     return out
 
 
-def build(files, info, stat="lof"):
+def build(files, info, stat="lof", prefix="lof", group=""):
     demo = np.load(files["demo"], allow_pickle=True)
     ood = np.load(files["ood"], allow_pickle=True)
     ev = np.load(files["eval"], allow_pickle=True)
@@ -249,9 +249,9 @@ def build(files, info, stat="lof"):
                 p=b64(np.asarray(P_ev, np.float32), np.float32)),
         ev2=dict(n=0),
     )
-    note = (f"{len(eps_tr)} 集 demo · α={ALPHA_FIRE} 检出 {tp}/{n_fail} · 3D≈{sum(pcvar):.0f}%"
-            + (" · p=进度条件kNN" if "latent" in p_src else " · p=真实重建分"))
-    man = dict(key=f"d{N}", latent=N, n_tr=int(len(PCtr)), n_ev=int(len(PCev)),
+    ptag = {"lof": "p=局部密度kNN", "progress": "p=进度条件kNN", "global": "p=全局kNN"}[stat]
+    note = (f"{len(eps_tr)} 集 demo · α={ALPHA_FIRE} 检出 {tp}/{n_fail} · 3D≈{sum(pcvar):.0f}% · {ptag}")
+    man = dict(key=f"{prefix}-d{N}", latent=N, group=group, n_tr=int(len(PCtr)), n_ev=int(len(PCev)),
                n_ood=int(len(PCoo)), n_ep=int(len(eps_tr)), pc_var=pcvar,
                n_fail=n_fail, tp=tp, note=note, p_src=p_src)
     return ds, man
@@ -264,20 +264,31 @@ def main():
     ap.add_argument("--default", default="")
     ap.add_argument("--stat", default="lof", choices=["lof", "progress", "global"],
                     help="lof=局部密度归一化（无进度，推荐）；progress=进度条件；global=全局 kNN（对照）")
+    ap.add_argument("--prefix", default="", help="键名前缀，默认取 --stat")
+    ap.add_argument("--group", default="", help="下拉分组标题")
+    ap.add_argument("--no-manifest", action="store_true", help="只写数据文件与 entries 侧车，不写 manifest")
+    ap.add_argument("--dims", default="", help="只建这些维数（逗号分隔），空=全部")
     a = ap.parse_args()
 
     idx = json.load(open(os.path.join(a.src, "export_index.json")))
     os.makedirs(a.out, exist_ok=True)
+    prefix = a.prefix or {"lof": "lof", "progress": "prog", "global": "glob"}[a.stat]
+    group = a.group or {"lof": "共形 p · 局部密度归一化（LOF，无进度）★",
+                        "progress": "共形 p · 进度条件 kNN（需要 u）",
+                        "global": "共形 p · 全局 kNN（无 u 的朴素对照）"}[a.stat]
+    want = {int(x) for x in a.dims.split(",") if x.strip()} if a.dims else None
     entries = []
     for info in idx:
+        if want is not None and int(info["latent"]) not in want:
+            continue
         N = int(info["latent"])
         files = {k: os.path.join(a.src, info["files"][k]) for k in ("demo", "ood", "eval")}
         if not all(os.path.exists(v) for v in files.values()):
             print(f"跳过 d{N}：文件缺失"); continue
-        ds, man = build(files, info, a.stat)
+        ds, man = build(files, info, a.stat, prefix, group)
         js = ("window.ROUTEC_DATA = window.ROUTEC_DATA || {};\n"
               f"window.ROUTEC_DATA[\"{man['key']}\"] = {json.dumps(ds, ensure_ascii=False)};\n")
-        p = os.path.join(a.out, f"d{N}.js")
+        p = os.path.join(a.out, f"{prefix}-d{N}.js")
         open(p, "w").write(js)
         entries.append(man)
         print(f"d{N}: {man['n_tr']} demo 帧/{man['n_ep']} 集 · {man['n_ood']} OOD 帧 · "
@@ -285,7 +296,13 @@ def main():
               f"· p 来源 {man['p_src']} · {os.path.getsize(p)/1024:.0f} KB")
 
     entries.sort(key=lambda e: -e["latent"])
-    default = a.default or f"d{entries[0]['latent']}"
+    # 侧车：把所有分组汇总交 build_routec_all_js.py 合并
+    side = os.path.join(a.out, f"_entries.{prefix}.json")
+    json.dump(entries, open(side, "w"), ensure_ascii=False, indent=1)
+    if a.no_manifest:
+        print(f"{prefix}: {len(entries)} 档已写入（entries → {os.path.basename(side)}）")
+        return
+    default = a.default or f"{prefix}-d{entries[0]['latent']}"
     man = dict(default=default, dims=entries,
                note="每个维数一套 demo 拟合的 PCA 基；3D 只代表 |pc_var| 之和比例的结构")
     open(os.path.join(a.out, "manifest.js"), "w").write(

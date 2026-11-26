@@ -1,95 +1,109 @@
 #!/usr/bin/env python3
-"""一次性把两套数据都挂到页面上：
+"""把"同一种评估方法"的数据集中成一组，一次构建出前端的完整清单。
 
-  d32/d16/d8/d4  交接包（100 集 demo / 8 局评测 / OOD 任务）—— 逐帧 p 为**进度条件 kNN 回退**
-  x32/x16/x64    α 核验版（20 集 demo / 25 局评测）—— 逐帧 p 为 **VAE 真实重建分 + 共形 p**
+分组（下拉里按组展示，组内按维数从高到低）：
 
-两者坐标系不同（各自的 PCA 基），页面上按 key 分开选；下拉文案写清训练集规模与 p 的来源。
+  共形 p · 局部密度归一化（LOF，无进度）★   ← 默认：lof-d32/d16/d8/d4
+  共形 p · 进度条件 kNN（需要进度 u）        ← 对照：prog-d32/d16/d8/d4
+  共形 p · 全局 kNN（无 u 的朴素对照）        ← 对照：glob-d32（默认只建 32 维，已足够看出崩坏）
+  VAE 重建分（v0，20 集 / 25 局）             ← 可选：mse-x32（--with-mse，需 /tmp/latent）
+
+用法：
+  python3 scripts/build_routec_all_js.py                  # LOF + 进度条件 + 全局(d32)
+  python3 scripts/build_routec_all_js.py --stats lof      # 只留推荐方案
+  python3 scripts/build_routec_all_js.py --with-mse       # 再加 v0 对照
 """
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
 
+GROUPS = {
+    "lof": "共形 p · 局部密度归一化（LOF，无进度）★",
+    "progress": "共形 p · 进度条件 kNN（需要进度 u）",
+    "global": "共形 p · 全局 kNN（无 u 的朴素对照）",
+}
+PREFIX = {"lof": "lof", "progress": "prog", "global": "glob"}
+MSE_GROUP = "VAE 重建分（v0 · 20 集 / 25 局 · 需下游能算 MSE）"
+ASSIGN = "window.ROUTEC_"
 
-ASSIGN = re.compile(r'window\.ROUTEC_(?:DATA\["[^"]+"\]|MANIFEST)\s*=\s*')
 
-
-def load_js(path):
-    """解析 `window.ROUTEC_... = {...};`（base64 里有 '='，不能用 rindex('=')）。"""
-    txt = open(path).read().strip()
-    m = ASSIGN.search(txt)
-    body = txt[m.end(): txt.rindex(";")].strip()
-    return json.loads(body)
+def parse_js(path):
+    txt = open(path).read()
+    i = txt.index(ASSIGN)
+    body = txt[txt.index("=", i) + 1: txt.rindex(";")]
+    return json.loads(body.strip())
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--handover-src", default="data/routeC_latents")
-    ap.add_argument("--alpha-src", default="/tmp/latent")
     ap.add_argument("--out", default="docs/assets/routeC_latents")
-    ap.add_argument("--keep", default="d32", help="默认选中的 key")
-    ap.add_argument("--stat", default="lof", choices=["lof", "progress", "global"])
-    ap.add_argument("--with-alpha", action="store_true",
-                    help="额外挂上 α 核验版（20 集/25 局/真实重建分）；默认不挂——页面只保留一种评价指标")
+    ap.add_argument("--stats", default="lof,progress,global")
+    ap.add_argument("--global-dims", default="32")
+    ap.add_argument("--with-mse", action="store_true")
+    ap.add_argument("--mse-src", default="/tmp/latent")
+    ap.add_argument("--keep", default="")
     a = ap.parse_args()
+
     os.makedirs(a.out, exist_ok=True)
+    stats = [s.strip() for s in a.stats.split(",") if s.strip()]
+    entries = []
 
-    entries, data_keys = [], []
+    for stat in stats:
+        cmd = [PY, os.path.join(HERE, "build_routec_handover_js.py"),
+               "--src", a.handover_src, "--out", a.out, "--stat", stat,
+               "--prefix", PREFIX[stat], "--group", GROUPS[stat], "--no-manifest"]
+        if stat == "global":
+            cmd += ["--dims", a.global_dims]
+        print(f"\n== {GROUPS[stat]} ==", flush=True)
+        subprocess.run(cmd, check=True)
+        side = os.path.join(a.out, f"_entries.{PREFIX[stat]}.json")
+        if os.path.exists(side):
+            entries += json.load(open(side))
 
-    # ---- 1) 交接包维数 ----
-    print("== 交接包 ==", flush=True)
-    subprocess.run([PY, os.path.join(HERE, "build_routec_handover_js.py"),
-                    "--src", a.handover_src, "--out", a.out, "--stat", a.stat], check=True)
-    man = load_js(os.path.join(a.out, "manifest.js"))
-    entries += man["dims"]
-    data_keys += [e["key"] for e in man["dims"]]
-
-    # ---- 2) α 核验版（有真实重建分） ----
-    if a.with_alpha and a.alpha_src and os.path.isdir(a.alpha_src):
-        print("== α 核验版 ==", flush=True)
-        tmp = "/tmp/_xjslatents"
+    if a.with_mse and os.path.isdir(a.mse_src):
+        print(f"\n== {MSE_GROUP} ==", flush=True)
+        tmp = "/tmp/_xjs"
         os.makedirs(tmp, exist_ok=True)
         subprocess.run([PY, os.path.join(HERE, "build_routec_latents_js.py"),
-                        "--src", a.alpha_src, "--out", tmp], check=True)
-        man2 = load_js(os.path.join(tmp, "manifest.js"))
-        for e in man2["dims"]:
-            src_key = e["key"]
-            new_key = "x" + src_key[1:]
-            ds = load_js(os.path.join(tmp, f"{src_key}.js"))
-            ds["meta"]["pageTitle"] = "路线 C · α 核验版（真实重建分）"
-            ds["meta"]["pSource"] = "VAE 重建分 + 共形 p"
-            ds["meta"]["alpha0"] = 0.12
-            ds["meta"]["onlyCurOODDefault"] = True
-            ds["meta"]["autoplayFirstFire"] = True
-            ds["meta"].setdefault("paneATitle",
-                                  f"<b>演示</b> · {ds['meta']['n']:,} 帧 / {ds['meta']['n_ep']} 集")
-            ds["meta"]["paneBTitle"] = (ds["meta"].get("paneBTitle", "")
-                                        .replace("<b>测试轨迹", "<b>α 核验 · 测试轨迹"))
-            js = ("window.ROUTEC_DATA = window.ROUTEC_DATA || {};\n"
-                  f"window.ROUTEC_DATA[\"{new_key}\"] = {json.dumps(ds, ensure_ascii=False)};\n")
-            p = os.path.join(a.out, f"{new_key}.js")
-            open(p, "w").write(js)
-            e = dict(e, key=new_key,
-                     note=f"{ds['meta']['n_ep']} 集训练 · 25 局评测 · 真实重建分 · "
-                          f"α=0.12 检出 {e['tp']}/{e['n_fail']}")
-            entries.append(e)
-            data_keys.append(new_key)
-            print(f"  {new_key}: {e['note']} · {os.path.getsize(p)/1024:.0f} KB")
+                        "--src", a.mse_src, "--out", tmp], check=True)
+        for e in parse_js(os.path.join(tmp, "manifest.js"))["dims"]:
+            if e["key"] != "d32":
+                continue
+            ds = parse_js(os.path.join(tmp, "d32.js"))
+            ds["meta"]["pSource"] = "VAE 重建分 + 共形 p（v0 对照）"
+            key = "mse-x32"
+            open(os.path.join(a.out, f"{key}.js"), "w").write(
+                "window.ROUTEC_DATA = window.ROUTEC_DATA || {};\n"
+                f"window.ROUTEC_DATA[\"{key}\"] = {json.dumps(ds, ensure_ascii=False)};\n")
+            entries.append(dict(e, key=key, group=MSE_GROUP,
+                                note=f"{ds['meta']['n_ep']} 集训练 · 25 局评测 · 真实重建分 · "
+                                     f"α=0.12 检出 {e['tp']}/{e['n_fail']}"))
+            print(f"  {key} 已写出")
 
-    entries.sort(key=lambda e: (-int(e.get("latent", 0)), e["key"].startswith("x")))
-    default = a.keep if any(e["key"] == a.keep for e in entries) else entries[0]["key"]
+    order = [GROUPS[s] for s in stats] + ([MSE_GROUP] if a.with_mse else [])
+    entries.sort(key=lambda e: (order.index(e["group"]) if e.get("group") in order else 99,
+                                -int(e.get("latent", 0))))
+    lead = next((s for s in stats if s), "lof")
+    default = a.keep or next((e["key"] for e in entries if e["key"].startswith(PREFIX[lead] + "-")),
+                             entries[0]["key"])
     out = dict(default=default, dims=entries,
-               note="d* = 交接包（100 集 demo，逐帧 p 为进度条件 kNN 回退）；"
-                    "x* = α 核验版（20 集 demo，逐帧 p 为 VAE 真实重建分）。两套 PCA 基不同，不可跨套比较。")
+               groups=[dict(label=g, keys=[e["key"] for e in entries if e.get("group") == g])
+                       for g in order if any(e.get("group") == g for e in entries)],
+               note="同一组 = 同一种评估方法（组内只有潜空间维数在变）；跨组不可比。"
+                    "每个维数各自一套 demo 拟合的 PCA 基，3D 只代表其解释率之和。")
     open(os.path.join(a.out, "manifest.js"), "w").write(
         "window.ROUTEC_MANIFEST = " + json.dumps(out, ensure_ascii=False) + ";\n")
-    print(f"\nmanifest: {[e['key'] for e in entries]} 默认 {default}")
+
+    print(f"\n共 {len(entries)} 套：")
+    for g in out["groups"]:
+        print(f"  {g['label']}\n    {g['keys']}")
+    print(f"默认 {default}")
 
 
 if __name__ == "__main__":
