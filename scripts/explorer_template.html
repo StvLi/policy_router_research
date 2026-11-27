@@ -1197,7 +1197,12 @@ function buildOODList() {
   const box = document.getElementById('oodbox');
   if (!box) return;
   const has = (META.ev_fire && META.ev_fire['0']) || EVP;
-  if (!has || !(BATCHES[0].rollouts || []).length) return;
+  const list0 = document.getElementById('oodlist');
+  if (!has || !(BATCHES[0].rollouts || []).length) {
+    if (list0) list0.innerHTML = '';
+    box.style.display = 'none';
+    return;
+  }
   box.style.display = '';
   const list = document.getElementById('oodlist');
   list.innerHTML = '';
@@ -1281,7 +1286,8 @@ function autoPlayFirstFire() {
   if (!META.autoplayFirstFire) { VB.load(''); return; }
   const f = (META.ev_fire || {})['0'] || {};
   const k = Object.keys(f).find(j => f[j] && f[j].idx >= 0);
-  if (k !== undefined) {
+  if (k === undefined) { VB.load(''); return; }
+  {
     const s = document.getElementById('evsel');
     s.value = k; selEvIdx = parseInt(k, 10);
     VB.load((BATCHES[0].rollouts[selEvIdx] || {}).file);

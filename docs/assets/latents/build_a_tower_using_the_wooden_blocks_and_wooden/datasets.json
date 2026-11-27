@@ -9,15 +9,15 @@
    "group": "按任务（该任务独立 VAE · 32 维）",
    "file": "latents/build_a_tower_using_the_wooden_blocks_and_wooden/lof-d32.js",
    "latent": 32,
-   "n_tr": 10938,
-   "n_ev": 3639,
-   "n_ep": 75,
+   "n_tr": 14577,
+   "n_ev": 0,
+   "n_ep": 100,
    "pc_var": [
     14.98,
     11.15,
     9.62
    ],
-   "note": "75 集拟合 / 25 集留出 · 集级误报 α=0.12: 22/25 (88%)"
+   "note": "100 集演示 · 暂无 rollout"
   }
  ]
 }

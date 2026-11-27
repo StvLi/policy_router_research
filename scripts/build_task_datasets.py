@@ -101,11 +101,19 @@ def main():
         sid = {n: i for i, n in enumerate(names)}
         cls = np.array([sid[s] for s in stages], np.uint8)
 
-        fit, cal = ~is_cal, is_cal
-        ids_fit = np.where(fit)[0][np.lexsort((t_[fit], ep[fit]))]
-        ids_cal = np.where(cal)[0][np.lexsort((t_[cal], ep[cal]))]
+        # 左栏 = **全部**演示集（100 集）；75/25 只是训练 VAE 时的验证划分，不作为可视化轴
+        ids_fit = np.arange(len(pc3))[np.lexsort((t_, ep))]
         eps_fit = np.unique(ep[ids_fit])
-        eps_cal = sorted(set(ep[ids_cal].tolist()))
+
+        # 右栏 = 该任务的**真实 VLA rollout**（若已编码：<pages>/<task>.eval.npz）
+        evf = os.path.join(a.pages, f"{key}.eval.npz")
+        has_ev = os.path.exists(evf)
+        if has_ev:
+            zz = np.load(evf)
+            ids_cal = np.arange(len(zz["pc3"]))[np.lexsort((zz["t"], zz["ep"]))]
+            eps_cal = sorted(set(zz["ep"].tolist()))
+        else:
+            ids_cal, eps_cal = np.array([], int), []
 
         offs = [0]
         for e in eps_fit:
@@ -116,14 +124,18 @@ def main():
 
         offs_ev, rollouts = [0], []
         for e in eps_cal:
-            n = int((ep[ids_cal] == e).sum())
+            n = int((zz["ep"] == e).sum())
             offs_ev.append(offs_ev[-1] + n)
-            name = f"ep{int(e):06d}"
-            rollouts.append(dict(layout=int(e), n=n, ok=True, official=None, score=None,
-                                 cfg="留出集", group="留出集",
+            k = int(np.where(zz["ep"] == e)[0][0])
+            ok = bool(zz["ok"][k]) if "ok" in zz.files else False
+            name = f"episode_{int(e):07d}_cam_head_{'success' if ok else 'fail'}"
+            rollouts.append(dict(layout=int(e), n=n, ok=ok,
+                                 official=(float(zz["score"][k]) if "score" in zz.files else None),
+                                 score=None, cfg="VLA rollout",
+                                 group=("成功" if ok else "失败"),
                                  file=(name if name in vids else "")))
 
-        loc = fires(p[ids_cal], ep[ids_cal], t_[ids_cal])
+        loc = fires(zz["p"][ids_cal], zz["ep"][ids_cal], zz["t"][ids_cal]) if has_ev else {}
         ev_fire = {}
         for i, e in enumerate(eps_cal):
             rec = dict(loc[str(int(e))])
@@ -135,25 +147,28 @@ def main():
         # 集级误报率：留出集全是成功集，逐集"有没有触发"就是误报
         def ep_fire_rate(alpha):
             hit = 0
+            if not has_ev:
+                return 0, 0
             for e in eps_cal:
-                q = p[ids_cal][ep[ids_cal] == e]
-                tt = t_[ids_cal][ep[ids_cal] == e]
+                q = zz["p"][zz["ep"] == e]
+                tt = zz["t"][zz["ep"] == e]
                 q = q[np.argsort(tt)]
                 h = any(int((q[i:i + WIN] < alpha).sum()) >= NEED
                         for i in range(len(q) - WIN + 1))
                 hit += bool(h)
             return hit, len(eps_cal)
-        ep_fpr = {str(al): ep_fire_rate(al) for al in (0.01, 0.05, 0.12)}
+        ep_fpr = ({str(al): ep_fire_rate(al) for al in (0.01, 0.05, 0.12)}
+                  if has_ev else {})
 
         ds = dict(
             meta=dict(
                 title=f"「{task}」· 该任务独立 VAE（32 维潜变量）→ demo 拟合 PCA 前 3 维",
                 pageTitle="Flora · 潜空间浏览器",
                 paneATitle=(f"<b>拟合集（参考）</b> · {len(ids_fit):,} 帧 / {len(eps_fit)} 集 · 按阶段着色"),
-                paneBTitle=(f"<b>留出集 · {len(eps_cal)} 集</b> · {len(ids_cal):,} 帧 · "
-                            "同任务同分布、未参与拟合（形状理应相似）· "
-                            "<span style='color:#c0392b'>颜色=p</span> "
-                            "<span style='color:#ff7a18'>橙星=触发帧</span>"),
+                paneBTitle=(f"<b>VLA 真实 rollout · {len(eps_cal)} 局</b> · "
+                            f"{len(ids_cal):,} 帧 · 白点=轨迹 "
+                            "<span style='color:#ff7a18'>橙星=OOD 触发帧</span>"
+                            if has_ev else "<b>VLA 真实 rollout</b> · 暂无数据"),
                 n=int(len(ids_fit)), n_ep=int(len(eps_fit)),
                 ep_names=[f"ep{int(e):06d}" for e in eps_fit],
                 pc_var=[round(float(v) * 100, 2) for v in z["pc_var"]],
@@ -161,15 +176,17 @@ def main():
                 no_cls=False, cmode0="cls",
                 cls_counts={int(sid[n]): int((stages == n).sum()) for n in names},
                 cls_names=names,
-                ev_n=int(len(ids_cal)), ev_rollouts=rollouts, ev2_n=0, ev2_rollouts=[],
+                ev_n=int(len(zz["pc3"])) if has_ev else 0, ev_rollouts=rollouts,
+                evNote=("" if has_ev else "该任务暂无 VLA 评测 rollout（左栏为全部演示）"), ev2_n=0, ev2_rollouts=[],
                 ev_fire={"0": ev_fire}, batch0Label=f"留出集（{len(eps_cal)} 集）",
                 latent=32, alpha0=ALPHA, onlyCurOODDefault=True, autoplayFirstFire=True,
-                epFpr={k: f"{(v[0]/v[1]*100):.0f}%" for k, v in ep_fpr.items()},
+                epFpr=({k: f"{(v[0]/max(1, v[1])*100):.0f}%" for k, v in ep_fpr.items()}
+                       if ep_fpr else {}),
                 pSource="共形 p（局部密度归一化 kNN）",
                 videoDir=f"videos/flora/{key}", ev_videoDir=f"videos/flora/{key}",
                 videoEpisodes=[i for i, n in
                                enumerate([f"ep{int(e):06d}" for e in eps_fit]) if n in vids],
-                onePane=False, evColorByP=True,
+                onePane=False,
             ),
             pc=b64(pc3[ids_fit], np.float32),
             cls=b64(cls[ids_fit], np.uint8),
@@ -179,13 +196,15 @@ def main():
             score=b64(p[ids_fit], np.float32),
             p=b64(p[ids_fit], np.float32),
             ang=b64(np.arctan2(pc3[ids_fit][:, 1], pc3[ids_fit][:, 0]).astype(np.float32), np.float32),
-            ev=dict(n=int(len(ids_cal)), z=b64(pc3[ids_cal], np.float32),
-                    t=b64((t_[ids_cal] / 25.0).astype(np.float32), np.float32),
-                    ep=b64(np.array([eps_cal.index(x) for x in ep[ids_cal]], np.int32), np.int32),
-                    off=b64(np.asarray(offs_ev, np.int32), np.int32),
-                    ok=b64(np.ones(len(ids_cal), np.uint8), np.uint8),
-                    cfg=b64(np.zeros(len(ids_cal), np.uint8), np.uint8),
-                    p=b64(p[ids_cal], np.float32)),
+            ev=(dict(n=int(len(zz["pc3"])), z=b64(zz["pc3"][ids_cal], np.float32),
+                     t=b64((zz["t"][ids_cal] / 25.0).astype(np.float32), np.float32),
+                     ep=b64(np.array([eps_cal.index(x) for x in zz["ep"][ids_cal]], np.int32), np.int32),
+                     off=b64(np.asarray(offs_ev, np.int32), np.int32),
+                     ok=b64(np.array([1 if rollouts[eps_cal.index(e)]["ok"] else 0
+                                      for e in zz["ep"][ids_cal]], np.uint8), np.uint8),
+                     cfg=b64(np.zeros(len(ids_cal), np.uint8), np.uint8),
+                     p=b64(zz["p"][ids_cal], np.float32))
+                 if has_ev else dict(n=0)),
             ev2=dict(n=0),
         )
         outdir = os.path.join(a.out, key)
@@ -199,14 +218,14 @@ def main():
                                       file=f"latents/{key}/lof-d32.js", latent=32,
                                       n_tr=int(len(ids_fit)), n_ev=int(len(ids_cal)),
                                       n_ep=int(len(eps_fit)), pc_var=ds["meta"]["pc_var"],
-                                      note=f"{len(eps_fit)} 集拟合 / {len(eps_cal)} 集留出 · "
-                                           f"集级误报 α=0.12: {ep_fpr['0.12'][0]}/{ep_fpr['0.12'][1]}"
-                                           f" ({ep_fpr['0.12'][0]/len(eps_cal)*100:.0f}%)")]),
+                                      note=(f"{len(eps_fit)} 集演示 · {len(eps_cal)} 局 rollout · "
+                                            f"集级误报@0.12 {ep_fpr['0.12'][0]}/{ep_fpr['0.12'][1]}"
+                                            if has_ev else
+                                            f"{len(eps_fit)} 集演示 · 暂无 rollout"))]),
                   open(os.path.join(outdir, "datasets.json"), "w"), ensure_ascii=False, indent=1)
-        print(f"  {key}: 拟合 {len(ids_fit):,} 帧 / 留出 {len(ids_cal):,} 帧 · 阶段 {len(names)} 类 · "
-              f"集级误报 α=0.12: {ep_fpr['0.12'][0]}/{ep_fpr['0.12'][1]} "
-              f"({ep_fpr['0.12'][0]/len(eps_cal)*100:.0f}%) · "
-              f"{os.path.getsize(os.path.join(outdir, 'lof-d32.js'))/1024:.0f} KB")
+        extra = (f" · 集级误报 α=0.12: {ep_fpr['0.12'][0]}/{ep_fpr['0.12'][1]}" if has_ev else " · 暂无 rollout")
+        print(f"  {key}: 演示 {len(ids_fit):,} 帧 / {len(eps_fit)} 集 · 阶段 {len(names)} 类"
+              f"{extra} · {os.path.getsize(os.path.join(outdir, 'lof-d32.js'))/1024:.0f} KB")
 
 
 if __name__ == "__main__":
