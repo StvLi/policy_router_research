@@ -1220,8 +1220,10 @@ function buildOODList() {
   const sum = document.createElement('div');
   sum.className = 'kv';
   sum.style.marginTop = '4px';
-  sum.innerHTML = `<span>失败 ${nFail} 局中检出</span><b>${nHit} / ${nFail}</b>`;
-  list.appendChild(sum);
+  if (nFail > 0) {
+    sum.innerHTML = `<span>失败 ${nFail} 局中检出</span><b>${nHit} / ${nFail}</b>`;
+    list.appendChild(sum);
+  }
   const sum2 = document.createElement('div');
   sum2.className = 'kv';
   sum2.innerHTML = `<span>成功 ${rolls.length - nFail} 局中误报</span><b>${nOk}</b>`;
