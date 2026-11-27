@@ -189,3 +189,60 @@ python3 scripts/build_routec_all_js.py               # 重建页面数据（9 �
 4. **维度取值**：定 $d=32$（时机最好）还是 $d=8$（3D 可视化代表性 47%，页面更好看）？
    我建议**线上用 32、页面看 8**。
 5. **页面在上量后怎么退**：评测集到几百局时，3D 点云会糊成一片。是否改成"任务→集"两级下钻？
+
+---
+
+## 12. 多任务上量的前置检查（2026-11-27）
+
+### 12.1 机器：**没有找到 6 卡机器**
+
+从当前工作站能 ssh 到的 5 台机器，逐一实测（`nvidia-smi -L` + `lspci` 交叉验证，lspci 里 NVIDIA 只有显示设备一个）：
+
+| 主机 | GPU | 显存占用 | 磁盘 | 现状 |
+|---|---|---|---|---|
+| `…-pro6xxxx-0`（lspci 确认 1 张） | 1 × RTX PRO 6000 | 1.7 / 98 GB，0% | 1.5T 可用（17%） | **空闲** |
+| `…-pro6xxxx-1`（ws，一直在用） | 1 × RTX PRO 6000 | 0.5 / 98 GB，0% | **176 GB 可用（90% 满）** | **空闲** |
+| `…-a6000-0` | 1 × A6000 | 25 / 49 GB，0% | — | 空闲（有人留了缓存） |
+| `…-prime-pro6xxxx-0` | 1 × RTX PRO 6000 | 15 MB / 98 GB，0% | — | **完全空闲** |
+| `…-chku-pro6xxx-0` | 1 × RTX PRO 6000 | 81 / 98 GB，**100%** | — | **别人在用**（`SuperMimic/GRAB` 评测，PID 1747180） |
+
+**结论**：可达机群是 **5 台 × 1 卡**，不是 6 卡。"6c 的 6 张 RTX PRO 6000" 在这套 ssh 配置里不存在
+（可能是迁移前的机器，或不在当前网络/tailscale 节点里）。**要按 6 卡并行得先给出那台机器的地址。**
+
+即便如此，现有 4 张空闲卡也够起步：35 任务 × 100 集的抽取（≈49 GPU·h）在 4 卡上约 **半天**。
+
+### 12.2 数据：**官方 35 任务数据集不在可达机器上**
+
+找到的相关资产：
+
+| 路径（host） | 内容 | 能不能用 |
+|---|---|---|
+| `/data/syt/flora_vla/videos/`（-1） | **112 GB**，三路相机 `cam_high/left_wrist/right_wrist`，LeRobot v3 打包（`chunk-000/file-XXX.mp4`，每路 256 个文件） | **只有视频、没有 meta**（无 `info.json`/`tasks.jsonl`/`episodes.jsonl`）→ 无法按任务切分；从体量看是**单任务** |
+| `/data/syt/hf_cache/lerobot/local/`（-1） | 2 套 × ~40 GB：`RoboDojo-stack_bowls_night100-arx_x5-joint` 与 `PhysBrainStructuredV2-stack_bowls-…` | 可用，但**只有 stack_bowls 一个任务** |
+| `/data/syt/flora_sft`（-1） | 250 GB | VLA 微调训练产物，不是演示数据 |
+| `/data/syt/hf_cache/hub/datasets--RoboDojo-Benchmark--RoboDojo`（-1） | **12 KB**（只有 refs） | 官方数据集**从未真正下载** |
+| `…/robodojo_ws/RoboDojo/eval_result`（-0） | 只有 `RoboDojo/` 一层 | 仅 store_laptop 一个任务的评测结果 |
+
+**结论**：要做"每任务一个 VAE × 35 任务"，缺两样硬前提：
+1. **35 任务的演示数据**（每任务 100 集，三视角）——现在只有 store_laptop（1 个任务）和 stack_bowls（1 个任务）；
+2. **每任务的评测 rollout**（带成功/失败标签）——现在只有 store_laptop 的 25 局。
+
+### 12.3 建议的两级验证（拿到数据立刻能跑）
+
+| 级别 | 不依赖评测 rollout | 需要什么 | 能回答什么 | 成本 |
+|---|---|---|---|---|
+| **L1 跨任务 OOD** | ✔ 只要各任务演示 | 35 任务 × 100 集的三视角视频 | "每任务一个 VAE 能否把自己任务的帧认成正常、把别的任务认成异常"（AUROC/捕获率，交接包里已有先例） | 抽取 49 GPU·h + 每组 VAE 秒级 |
+| **L2 同任务失败检出** | ✘ 需要 rollout | 每任务 ≥20 失败 + ≥10 成功 | 真正的 OOD 失败检测（当前 24/1 的放大版） | 抽取 + **VLA 评测**（最贵，需 6 卡跑策略） |
+
+建议顺序：**先跑 L1（35 任务全量）**，它能立刻回答"适用面有多广"，且不需要重新跑策略；
+L1 通过后再挑 5 个任务补 L2。
+
+### 12.4 一旦拿到数据，执行脚本（已就绪/待补）
+
+1. 抽取：`scripts/routeC_vae_failure.py extract --source demo --episodes 0-99 --clips <task>/clips`（单任务 100 集约 1.4 GPU·h）；
+2. 每任务训练 VAE + 校准：`train`（秒级），**每任务独立校准集**（跨任务不可共用，见 §9 风险 1）；
+3. 打分与报告：`scripts/routec_ood_report.py`（已是按集合计 + Wilson）；
+4. 汇总：新增 `scripts/multitask_report.py`（待写）——按任务出捕获率/误报率表 + 跨任务汇总（分层加权）。
+
+**需要你提供**：① 6 卡机器地址（或确认用现有 4 卡）；② 35 任务数据的可读路径（或 HF repo id + 允许下载）；
+③ 哪些任务已有评测 rollout（决定 L2 的范围）。
