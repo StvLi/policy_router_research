@@ -1,6 +1,6 @@
 {
  "key": "store_laptop_and_headphones",
- "label": "收纳耳机与笔记本电脑（单任务 · 含 25 局评测）",
+ "label": "收纳耳机与笔电（含 25 局评测）",
  "videoDir": "videos/head",
  "evVideoDir": "videos/eval25",
  "datasets": [
