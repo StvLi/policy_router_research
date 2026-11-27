@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Flora · 按任务浏览</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#0b0d12; color:#d8dee9; font:13px/1.5 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; overflow:hidden; }
+  #wrap { display:flex; height:calc(100vh - 54px); }
+  #top { display:flex; align-items:center; gap:16px; height:54px; padding:0 14px;
+         background:#0e1118; border-bottom:1px solid #202533; }
+  #tbrand { display:flex; flex-direction:column; min-width:0; }
+  #tbrand b { font-size:13.5px; color:#e6ecf5; letter-spacing:.2px; }
+  #tbrand span { font-size:11px; color:#7c8698; white-space:nowrap; overflow:hidden;
+                 text-overflow:ellipsis; max-width:40vw; }
+  #dimbox { display:flex; align-items:center; gap:8px; font-size:11.5px; color:#8b95a8; white-space:nowrap; }
+  #dimbox select { width:auto; min-width:360px; max-width:46vw; font-size:12px; padding:5px 6px; }
+  #tstats { display:flex; gap:8px; margin-left:auto; }
+  .chip { background:#161a24; border:1px solid #232a38; border-radius:999px;
+          padding:4px 11px; font-size:11px; color:#9aa5b8; white-space:nowrap; }
+  .chip b { color:#e6ecf5; font-variant-numeric:tabular-nums; }
+  #tacts { display:flex; gap:6px; }
+  #tacts button { width:auto; padding:5px 10px; font-size:11.5px; }
+  #side { width:326px; flex:0 0 326px; background:#11141b; border-right:1px solid #202533;
+          padding:12px 14px 20px; overflow-y:auto; }
+  #side.collapsed { display:none; }
+  .grp main, .hintline { font-size:11px; color:#77839a; line-height:1.6; }
+  .cams { display:flex; gap:4px; margin-left:auto; }
+  .cams button { width:auto; padding:2px 7px; font-size:10.5px; border-radius:4px; }
+  .cams button.on { background:#2b3446; border-color:#3d4a60; color:#e6ecf5; }
+  .pbtn { width:auto; padding:3px 8px; font-size:11px; }
+  #help { position:fixed; inset:0; background:#05070bbb; display:none; z-index:50;
+          align-items:center; justify-content:center; }
+  #help.on { display:flex; }
+  #helpbox { width:min(760px, 90vw); max-height:80vh; overflow:auto; background:#12151d;
+             border:1px solid #262d3b; border-radius:10px; padding:20px 22px; }
+  #helpbox h2 { margin:0 0 6px; font-size:15px; }
+  #helpbox ol { margin:8px 0 0 18px; padding:0; font-size:12.5px; line-height:1.9; color:#c3ccda; }
+  #helpbox code { background:#1b2130; padding:1px 5px; border-radius:4px; font-size:11.5px; }
+  #helpbox .k { display:inline-block; background:#1b2130; border:1px solid #2b3446;
+                border-radius:4px; padding:0 6px; font-size:11px; }
+  #stage { position:relative; flex:1; display:flex; gap:1px; background:#202533; }
+  .pane { position:relative; flex:1; display:flex; flex-direction:column; background:#0b0d12; min-width:0; }
+  .ptitle { flex:0 0 auto; padding:5px 10px; font-size:11px; color:#8b95a8;
+            background:#0e1118; border-bottom:1px solid #1b202c; letter-spacing:.2px; }
+  .ptitle b { color:#cfd6e2; font-weight:600; }
+  .ptitle .warn { color:#e0a33a; margin-left:6px; }
+  .pane canvas { flex:1; display:block; width:100%; min-height:0; cursor:grab; }
+  .pane canvas.dragging { cursor:grabbing; }
+  canvas { display:block; width:100%; height:100%; cursor:grab; }
+  canvas.dragging { cursor:grabbing; }
+  h1 { font-size:13px; margin:0 0 4px; font-weight:600; letter-spacing:.2px; }
+  .sub { color:#7c8698; font-size:11px; margin-bottom:12px; }
+  .grp { margin:12px 0; padding-top:10px; border-top:1px solid #1d2230; }
+  .grp:first-of-type { border-top:none; }
+  .lbl { color:#8b95a8; font-size:11px; text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+  label.row { display:flex; align-items:center; gap:7px; padding:2px 0; cursor:pointer; }
+  label.row:hover { background:#161a24; }
+  .btnrow { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .btnrow button { width:auto; padding:5px 6px; font-size:11.5px; }
+  .slider { display:flex; align-items:center; gap:8px; padding:3px 0; }
+  .slider span { color:#8b95a8; font-size:11.5px; white-space:nowrap; flex:0 0 46px; }
+  .slider input { flex:1; min-width:0; }
+  .sw { width:11px; height:11px; border-radius:2px; flex:0 0 11px; }
+  .cnt { color:#5f6a7d; margin-left:auto; font-variant-numeric:tabular-nums; }
+  select, input[type=range] { width:100%; }
+  select { background:#1a1f2b; color:#d8dee9; border:1px solid #2a3142; border-radius:4px; padding:4px; }
+  button { background:#1a1f2b; color:#cfd6e2; border:1px solid #2a3142; border-radius:4px; padding:5px 9px; cursor:pointer; width:100%; }
+  button:hover { background:#222838; }
+  .kv { display:flex; justify-content:space-between; font-size:11px; color:#8b95a8; padding:1px 0; }
+  .kv b { color:#cfd6e2; font-weight:600; font-variant-numeric:tabular-nums; }
+  #oodlist { max-height:42vh; overflow-y:auto; padding-right:2px; }
+  .oodrow { display:flex; align-items:center; gap:6px; padding:2px 4px; cursor:pointer;
+            border-radius:3px; font-size:11px; color:#9aa5b8; }
+  .oodrow:hover { background:#161a24; }
+  .oodrow.on { background:#22272f; color:#e6ecf5; }
+  .oodrow .st { margin-left:auto; font-variant-numeric:tabular-nums; }
+  .oodrow .hit { color:#ff8a5c; }
+  .oodrow .miss { color:#6b7688; }
+  #tip { position:absolute; pointer-events:none; background:#141922ee; border:1px solid #2a3142; border-radius:5px;
+         padding:6px 8px; font-size:11px; line-height:1.45; display:none; white-space:nowrap; }
+  #legend { position:absolute; right:12px; bottom:12px; background:#11141bdd; border:1px solid #202533;
+            border-radius:6px; padding:8px 10px; font-size:10.5px; color:#8b95a8; }
+  #legend .bar { height:8px; border-radius:2px; margin:3px 0 2px; }
+  .hint { position:absolute; left:12px; bottom:12px; color:#4e5766; font-size:11px; }
+  #vidB { position:absolute; right:12px; top:46px; width:318px; background:#11141bee;
+          border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
+  #vidB.on { display:block; }
+  #vidB video { width:100%; border-radius:4px; display:block; background:#000; }
+  #vheadB { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vheadB b { color:#d8dee9; font-weight:600; }
+  #vcapB { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
+  #vseekB { width:100%; margin:6px 0 2px; accent-color:#c9d3e3; height:14px; }
+  #vtimeB { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
+  #vid { position:absolute; left:12px; top:46px; width:318px; background:#11141bee;
+         border:1px solid #202533; border-radius:7px; padding:7px; display:none; }
+  #vid.on { display:block; }
+  #vid video { width:100%; border-radius:4px; display:block; background:#000; }
+  #vhead { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-bottom:5px; font-size:11px; color:#9aa5b8; }
+  #vhead b, #vheadB b { flex:1 1 100%; font-size:10.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #vhead button, #vheadB button { white-space:nowrap; }
+  #vhead b { color:#d8dee9; font-weight:600; }
+  #vhead select, #vheadB select { width:auto; padding:1px 4px; font-size:10.5px; }
+  .cams { flex:0 0 auto; }
+  .pgrp { margin-left:auto; display:flex; gap:4px; align-items:center; }
+  .pgrp button { padding:2px 7px; font-size:11px; white-space:nowrap; }
+  #vcap { margin-top:5px; font-size:11px; line-height:1.4; color:#b9c2d2; }
+  #vseek { width:100%; margin:6px 0 2px; accent-color:#4c9be8; height:14px; }
+  #vtime { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
+  #vcap .chip { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
+  #vbtn { margin-left:auto; width:auto; padding:2px 8px; font-size:11px; }
+  #wrap.onepane #paneB { display:none; }
+</style>
+</head>
+<body>
+<div id="top">
+  <div id="tbrand"><b id="ttl"></b><span id="sub"></span></div>
+  <div id="dimbox" style="display:none">
+    <span id="dimlabel">潜空间维数</span>
+    <select id="dimsel"></select>
+  </div>
+  <div id="tstats"></div>
+  <div id="tacts">
+    <button id="sidebtn" title="收起 / 展开侧栏（Tab）">◧ 侧栏</button>
+    <button id="helpbtn" title="使用说明">? 说明</button>
+  </div>
+</div>
+
+<div id="help"><div id="helpbox">
+  <h2>怎么用这个页面</h2>
+  <ol>
+    <li><b>选一局</b>：左栏「OOD 检出情况」里点任意一行，右栏就会播那一局的视频，轨迹上出现游标。</li>
+    <li><b>换视角</b>：视频头部的 <code>头部 / 左手 / 右手</code> 三个按钮；判断 OOD 是否合理时先看腕部。</li>
+    <li><b>看判据</b>：拖「阈值 α」滑块，星标、清单、检出计数会同时重算；点 <code>0.12</code> 等预设可快速跳。</li>
+    <li><b>看单条轨迹</b>：勾上「只显示当前轨迹的 OOD 样本」，其它局的星标就不会干扰。</li>
+    <li><b>换维数</b>（页面上方）：<code>16 / 32 / 64</code> 维各有一套 PCA 基，坐标不可跨维数比较。</li>
+  </ol>
+  <p class="hintline" style="margin-top:12px">
+    快捷键：<span class="k">空格</span> 播放/暂停 · <span class="k">←</span><span class="k">→</span> 前后 0.2 s ·
+    <span class="k">1</span><span class="k">2</span><span class="k">3</span> 切视角 · <span class="k">↑</span><span class="k">↓</span> 上/下一局 ·
+    <span class="k">Tab</span> 收起侧栏 · <span class="k">Esc</span> 关闭本页
+  </p>
+  <p class="hintline">
+    注意：本页要<b>在仓库里原位打开</b>（同目录下有 <code>routeC_latents/</code>）。单独拷一个 html 出去会读不到数据。
+  </p>
+  <p style="text-align:right;margin:14px 0 0"><button id="helpclose" style="width:auto">知道了</button></p>
+</div></div>
+
+<div id="wrap">
+  <div id="side">
+    <div class="grp" id="oodbox" style="display:none">
+      <div class="lbl">OOD 判据（滑窗 5 帧内 ≥3 帧 p &lt; 阈值）</div>
+      <div class="slider"><span>阈值 α</span><input type="range" id="alpha" min="1" max="200" step="1" value="50"></div>
+      <div class="kv" style="margin-bottom:6px"><span>当前 α</span><b id="alphav">0.050</b></div>
+      <div class="btnrow" id="apresets">
+        <button data-a="0.05">0.05</button><button data-a="0.10">0.10</button>
+        <button data-a="0.12">0.12</button><button data-a="0.20">0.20</button>
+      </div>
+      <label class="row"><input type="checkbox" id="onlyCurOOD"> 只显示当前轨迹的 OOD 样本</label>
+      <div class="lbl" style="margin-top:8px">OOD 检出情况</div>
+      <div id="oodlist"></div>
+    </div>
+
+
+
+    <div class="grp">
+      <div class="lbl">着色方式</div>
+      <select id="cmode">
+        <option value="cls">子任务类别</option>
+        <option value="ang">相位角（绕环角度）</option>
+        <option value="t">时间</option>
+        <option value="score">不典型度（越大越不像）</option>
+        <option value="ep">episode</option>
+      </select>
+    </div>
+
+    <div class="grp" id="clsbox">
+      <div class="lbl">子任务（点击显示/隐藏）</div>
+      <div id="clss"></div>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">轨迹</div>
+      <select id="epsel"><option value="-1">（不显示轨迹）</option></select>
+      <label class="row" style="margin-top:6px"><input type="checkbox" id="dim"> 淡化其它点</label>
+    </div>
+
+    <div class="grp" id="evgroup">
+      <div class="lbl">评测批次（右）</div>
+      <select id="batchsel">
+        <option value="0">第一批 · T / T+Vnow（50 集）</option>
+        <option value="1">第二批 · eval25（25 集）</option>
+        <option value="2">两批叠加</option>
+      </select>
+      <div class="lbl" style="margin-top:8px">rollout（播放/高亮）</div>
+      <select id="evsel"><option value="-1">（不播放）</option></select>
+    </div>
+
+    <div class="grp" id="oodshowgroup">
+      <div class="lbl">左栏叠加</div>
+      <label class="row"><input type="checkbox" id="oodShow" checked> 显示 OOD 任务点（红）</label>
+    </div>
+
+    <div class="grp" id="evpane">
+      <div class="lbl">评测栏（右）</div>
+      <label class="row"><input type="checkbox" id="evShow" checked> 显示评测点（白）</label>
+      <label class="row"><input type="checkbox" id="evLines" checked> 连成轨迹</label>
+      <label class="row"><input type="checkbox" id="evOkOnly"> 只看成功帧</label>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">视角预设</div>
+      <div class="btnrow">
+        <button data-preset="iso">等轴测</button>
+        <button data-preset="p12">看 PC1-PC2</button>
+        <button data-preset="p23">看 PC2-PC3</button>
+        <button data-preset="p13">看 PC1-PC3</button>
+      </div>
+      <label class="row" style="margin-top:8px"><input type="checkbox" id="spin"> 自动旋转</label>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">显示</div>
+      <div class="slider"><span>点大小</span><input type="range" id="psize" min="1" max="6" step="0.5" value="2.5"></div>
+      <div class="slider"><span>透视</span><input type="range" id="fov" min="150" max="1200" step="10" value="520"></div>
+      <button id="reset" style="margin-top:8px">重置视角</button>
+    </div>
+
+    <div class="grp">
+      <div class="lbl">信息</div>
+      <div class="kv"><span>点数</span><b id="k_n"></b></div>
+      <div class="kv"><span>episode</span><b id="k_ep"></b></div>
+      <div class="kv"><span>PC1 / PC2 / PC3</span><b id="k_var"></b></div>
+      <div class="kv"><span>显示中</span><b id="k_shown"></b></div>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="pane" id="paneA">
+      <div class="ptitle" id="ptitleA"><b>训练数据 · 演示</b> · 10,366 帧 / 100 集 · 按子任务着色</div>
+      <canvas id="cv"></canvas>
+    </div>
+    <div class="pane" id="paneB">
+      <div class="ptitle" id="ptitleB"><b>评测轨迹</b></div>
+      <canvas id="cv2"></canvas>
+    </div>
+    <div id="vid">
+      <div id="vhead"><b id="vtitle">—</b><div class="cams" id="vcam"></div>
+        <div class="pgrp"><button class="pbtn" id="vprev" title="后退 0.2s">◀</button><button id="vbtn">暂停</button><button class="pbtn" id="vnext" title="前进 0.2s">▶</button></div></div>
+      <video id="v" muted loop playsinline preload="auto"></video>
+      <input type="range" id="vseek" min="0" max="1000" step="1" value="0">
+      <div id="vtime"></div>
+      <div id="vcap"></div>
+    </div>
+    <div id="vidB">
+      <div id="vheadB"><b id="vtitleB">—</b><div class="cams" id="vcamB"></div>
+        <div class="pgrp"><button class="pbtn" id="vprevB" title="后退 0.2s">◀</button><button id="vbtnB">暂停</button><button class="pbtn" id="vnextB" title="前进 0.2s">▶</button></div></div>
+      <video id="vB" muted loop playsinline preload="auto"></video>
+      <input type="range" id="vseekB" min="0" max="1000" step="1" value="0">
+      <div id="vtimeB"></div>
+      <div id="vcapB"></div>
+    </div>
+    <div id="tip"></div>
+    <div id="legend"></div>
+    <div class="hint">拖动旋转 · 滚轮缩放 · 右键/Shift 拖动平移 · 双击重置</div>
+  </div>
+</div>
+
+<script src="flora_tasks/manifest.js"></script>
+<script>
+const SHELL = {"pageTitle": "Flora · 按任务浏览", "title": "35 个任务 · 每任务独立 VAE（32 维）→ demo PCA 前 3 维", "selectorLabel": "任务", "videoDir": "", "ev_videoDir": "", "eval25VideoDir": "", "train_cams": ["head"], "ev_cams": ["head"], "onePane": true, "defaultDim": "arrange_the_numbers_from_left_to_right_to_form_t", "dimDir": "flora_tasks"};            // 页面级配置：视频目录、视角、维数清单
+let META = SHELL;                  // 当前数据集的 meta（与 SHELL 合并后）
+let DATA = ({} || {});
+
+function dec(b64, Type) {
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Type(u8.buffer);
+}
+
+// ---- 数据集状态（applyDataset 每次重设）----
+let PC = new Float32Array(0), CLS = new Uint8Array(0), EPI = new Int32Array(0);
+let OFF = new Int32Array(1), TT = new Float32Array(0), SC = new Float32Array(0);
+let SCp = null, ANG = new Float32Array(0), N = 0;
+let EV = {}, EVZ = new Float32Array(0), EVT = new Float32Array(0), EVEP = new Int32Array(0);
+let EVOFF = new Int32Array(1), EVP = null, EVOK = new Uint8Array(0), EVCFG = new Uint8Array(0), NE = 0;
+let OODZ = new Float32Array(0), OODN = 0;
+let E2 = {}, E2Z = new Float32Array(0), E2T = new Float32Array(0), E2EP = new Int32Array(0);
+let E2OFF = new Int32Array(1), E2OK = new Uint8Array(0), N2 = 0;
+let BATCHES = [];
+let batchSel = 0;
+let clsList = [], clsColor = {}, clsVisible = {};
+
+const PAL0 = ['#4c9be8','#f0932b','#2ecc71','#e74c3c','#9b59b6','#1abc9c','#e67e22','#95a5a6',
+              '#3498db','#e84393','#00b894','#fdcb6e','#6c5ce7','#d63031','#00cec9','#b2bec3'];
+
+// 把一份数据集对象装进全局状态
+function applyDataset(ds, dimmeta) {
+  if (!ds || !ds.pc) return false;
+  DATA = ds;
+  META = Object.assign({}, SHELL, dimmeta || ds.meta || {});
+  PC = dec(DATA.pc, Float32Array);
+  CLS = dec(DATA.cls, Uint8Array);
+  EPI = dec(DATA.ep, Int32Array);
+  OFF = dec(DATA.off, Int32Array);
+  TT = dec(DATA.t, Float32Array);
+  SC = dec(DATA.score, Float32Array);
+  SCp = DATA.p ? dec(DATA.p, Float32Array) : null;
+  ANG = dec(DATA.ang, Float32Array);
+  N = META.n || (PC.length / 3);
+
+  EV = DATA.ev || {};
+  EVZ = EV.n ? dec(EV.z, Float32Array) : new Float32Array(0);
+  EVT = EV.n ? dec(EV.t, Float32Array) : new Float32Array(0);
+  EVEP = EV.n ? dec(EV.ep, Int32Array) : new Int32Array(0);
+  EVOFF = EV.n ? dec(EV.off, Int32Array) : new Int32Array(1);
+  EVP = EV.p ? dec(EV.p, Float32Array) : null;
+  EVOK = EV.n ? dec(EV.ok, Uint8Array) : new Uint8Array(0);
+  EVCFG = EV.n ? dec(EV.cfg, Uint8Array) : new Uint8Array(0);
+  NE = EV.n || 0;
+
+  OODZ = DATA.ood && DATA.ood.n ? dec(DATA.ood.z, Float32Array) : new Float32Array(0);
+  OODN = (DATA.ood && DATA.ood.n) || 0;
+
+  E2 = DATA.ev2 || {};
+  E2Z = E2.n ? dec(E2.z, Float32Array) : new Float32Array(0);
+  E2T = E2.n ? dec(E2.t, Float32Array) : new Float32Array(0);
+  E2EP = E2.n ? dec(E2.ep, Int32Array) : new Int32Array(0);
+  E2OFF = E2.n ? dec(E2.off, Int32Array) : new Int32Array(1);
+  E2OK = E2.n ? dec(E2.ok, Uint8Array) : new Uint8Array(0);
+  N2 = E2.n || 0;
+
+  BATCHES = [
+    {name: '第一批', n: NE, z: EVZ, t: EVT, ep: EVEP, off: EVOFF, ok: EVOK,
+     rollouts: META.ev_rollouts || [], dir: META.ev_videoDir, tint: '#f2f6fc',
+     label: b => `#${b} ${(META.ev_rollouts[b]||{}).cfg||''} · layout ${(META.ev_rollouts[b]||{}).layout} · ${(META.ev_rollouts[b]||{}).ok?'成功':'失败'}`},
+    {name: '第二批', n: N2, z: E2Z, t: E2T, ep: E2EP, off: E2OFF, ok: E2OK,
+     rollouts: META.ev2_rollouts || [], dir: META.eval25VideoDir, tint: '#c9f0ff',
+     label: b => { const r=(META.ev2_rollouts[b]||{}); return `#${b} layout ${r.layout} · ${r.ok?'成功':'失败'} · score ${(r.score||0).toFixed(1)}`; }},
+  ];
+
+  clsList = META.no_cls ? [] : Object.keys(META.cls_counts || {}).map(Number).sort((a,b)=>a-b);
+  clsColor = {}; clsVisible = {};
+  clsList.forEach((c, i) => { clsColor[c] = PAL0[i % PAL0.length]; clsVisible[c] = true; });
+  resetFire();
+  return true;
+}
+
+const PAL = PAL0;
+
+// ---------- 相机（两栏共享） ----------
+let yaw = 0, pitch = 0, zoom = 1, panX = 0, panY = 0, fov = 520;   // 默认沿 PC3 看 → PC1-PC2 平面，环最清楚
+let DPR = 1;
+let selEpIdx = -1;                 // 训练栏当前选中的 episode（-1 = 不显示轨迹）
+
+function mkPane(id) {
+  const el = document.getElementById(id);
+  const o = { el, ctx: el.getContext('2d'), bgCv: document.createElement('canvas'), W: 0, H: 0 };
+  o.bg = o.bgCv.getContext('2d');
+  return o;
+}
+const PA = mkPane('cv'), PB = mkPane('cv2');
+
+let ext = 1;
+function computeExt() {
+  let e = 0;
+  for (let i = 0; i < 3 * N; i++) e = Math.max(e, Math.abs(PC[i]));
+  if (NE) for (let i = 0; i < 3 * NE; i++) e = Math.max(e, Math.abs(EVZ[i]));
+  for (let i = 0; i < 3 * OODN; i++) e = Math.max(e, Math.abs(OODZ[i]));
+  ext = e || 1;
+}
+computeExt();
+
+function alloc(P, n) {
+  if (P.n === n) return;
+  P.n = n;
+  P.sx = new Float32Array(n); P.sy = new Float32Array(n);
+  P.ssz = new Float32Array(n); P.zrot = new Float32Array(n);
+}
+function allocPanes() { alloc(PA, N); alloc(PB, NE); }
+allocPanes();
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  for (const P of [PA, PB]) {
+    const r = P.el.getBoundingClientRect();
+    P.W = Math.max(1, Math.round(r.width * DPR));
+    P.H = Math.max(1, Math.round(r.height * DPR));
+    P.el.width = P.W; P.el.height = P.H;
+    P.bgCv.width = P.W; P.bgCv.height = P.H;
+  }
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ---------- 颜色映射 ----------
+function ramp(v, stops) {
+  v = Math.max(0, Math.min(1, v));
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i], b = stops[i+1];
+    if (v >= a[0] && v <= b[0]) {
+      const t = (v - a[0]) / Math.max(1e-9, b[0] - a[0]);
+      const c = [0,1,2].map(j => Math.round(a[1][j] + t * (b[1][j] - a[1][j])));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  const c = stops[stops.length-1][1];
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+const CMAP_T = [[0,[40,20,90]],[0.25,[30,120,180]],[0.5,[40,190,120]],[0.75,[250,200,60]],[1,[250,240,180]]];
+const CMAP_S = [[0,[20,70,130]],[0.5,[250,200,60]],[1,[200,30,30]]];
+
+let cmode = META.cmode0 || 'cls';
+{
+  const p = Array.from(SC).sort((a,b)=>a-b);
+  window.__slo = p[Math.floor(0.02*p.length)]; window.__shi = p[Math.floor(0.98*p.length)];
+}
+function colorOf(i) {
+  switch (cmode) {
+    case 'cls':   return clsColor[CLS[i]] || '#888';
+    case 'ang':   return ramp((ANG[i] + Math.PI) / (2*Math.PI), CMAP_T);
+    case 't':     return ramp(TT[i] / (META.t_max || 1), CMAP_T);
+    case 'score': return ramp((SC[i] - window.__slo) / Math.max(1e-6, window.__shi - window.__slo), CMAP_S);
+    case 'ep':    return PAL[EPI[i] % PAL.length];
+  }
+  return '#888';
+}
+
+// ---------- 投影 ----------
+function updateCam(P) {
+  const cyw = Math.cos(yaw), syw = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const scale0 = Math.min(P.W, P.H) * 0.42 * zoom / ext;
+  return { cyw, syw, cp, sp, scale0, cx: P.W/2 + panX*DPR, cyy: P.H/2 + panY*DPR };
+}
+
+function projectAll(P, X3) {
+  const cam = updateCam(P);
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
+  for (let i = 0; i < P.n; i++) {
+    const x = X3[3*i], y = X3[3*i+1], z = X3[3*i+2];
+    const x1 = cyw * x + syw * z;
+    const z1 = -syw * x + cyw * z;
+    const y2 = cp * y - sp * z1;
+    const z2 = sp * y + cp * z1;
+    P.zrot[i] = z2;
+    const f = fov / (fov + z2 * ext * 1.2);
+    P.sx[i] = cx + x1 * scale0 * f;
+    P.sy[i] = cyy - y2 * scale0 * f;
+    P.ssz[i] = f;
+  }
+  return cam;
+}
+
+function project(x, y, z, cam, P) {
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
+  const x1 = cyw * x + syw * z;
+  const z1 = -syw * x + cyw * z;
+  const y2 = cp * y - sp * z1;
+  const z2 = sp * y + cp * z1;
+  const f = fov / (fov + z2 * ext * 1.2);
+  return [cx + x1 * scale0 * f, cyy - y2 * scale0 * f];
+}
+
+function drawAxes(P, g, cam) {
+  const o = project(0,0,0, cam, P);
+  const cols = [['#c0392b', [ext,0,0], `PC1 ${META.pc_var[0]}%`],
+                ['#27ae60', [0,ext,0], `PC2 ${META.pc_var[1]}%`],
+                ['#2980b9', [0,0,ext], `PC3 ${META.pc_var[2]}%`]];
+  for (const [col, v, lab] of cols) {
+    const p = project(v[0], v[1], v[2], cam, P);
+    g.strokeStyle = col; g.globalAlpha = 0.45; g.lineWidth = 1.2 * DPR;
+    g.beginPath(); g.moveTo(o[0], o[1]); g.lineTo(p[0], p[1]); g.stroke();
+    g.globalAlpha = 0.8; g.fillStyle = col; g.font = `${11*DPR}px sans-serif`;
+    g.fillText(lab, p[0] + 4*DPR, p[1] - 4*DPR);
+  }
+  g.globalAlpha = 1;
+}
+
+// ---------- 训练栏 ----------
+function drawStaticA() {
+  const P = PA;
+  const cam = projectAll(P, PC);
+  const g = P.bg;
+  g.clearRect(0, 0, P.W, P.H); g.fillStyle = '#0b0d12'; g.fillRect(0, 0, P.W, P.H);
+  drawAxes(P, g, cam);
+
+  const ord = new Array(N); for (let i = 0; i < N; i++) ord[i] = i;
+  ord.sort((a, b) => P.zrot[a] - P.zrot[b]);
+
+  const base = parseFloat(document.getElementById('psize').value);
+  const dimOn = document.getElementById('dim').checked;
+  let shown = 0;
+
+  // OOD（另一个任务）叠在左栏：位置有意义，颜色区分，默认开
+  const oodShow = document.getElementById('oodShow');
+  if (OODN && (!oodShow || oodShow.checked)) {
+    const n = OODN;
+    if (!P.ood) { P.ood = { sx: new Float32Array(n), sy: new Float32Array(n),
+                            ssz: new Float32Array(n), zrot: new Float32Array(n) }; P.oodN = n; }
+    if (P.oodN !== n) { P.ood = null; P.oodN = -1; }
+    const { cyw, syw, cp, sp, scale0, cx, cyy, e } = cam;
+    for (let i = 0; i < n; i++) {
+      const x = OODZ[3*i], y = OODZ[3*i+1], z = OODZ[3*i+2];
+      const x1 = cyw * x + syw * z, z1 = -syw * x + cyw * z;
+      const y2 = cp * y - sp * z1, z2 = sp * y + cp * z1;
+      P.ood.zrot[i] = z2;
+      const f = fov / (fov + z2 * e * 1.2);
+      P.ood.sx[i] = cx + x1 * scale0 * f;
+      P.ood.sy[i] = cyy - y2 * scale0 * f;
+      P.ood.ssz[i] = f;
+    }
+    g.fillStyle = '#e74c3c'; g.globalAlpha = 0.55;
+    for (let i = 0; i < n; i++) {
+      const s = base * 0.9 * P.ood.ssz[i] * DPR;
+      g.fillRect(P.ood.sx[i] - s/2, P.ood.sy[i] - s/2, s, s);
+    }
+    g.globalAlpha = 1;
+  }
+  for (let k = 0; k < N; k++) {
+    const i = ord[k];
+    if (cmode === 'cls' && !clsVisible[CLS[i]]) continue;
+    if (dimOn && selEpIdx >= 0 && EPI[i] !== selEpIdx) continue;
+    const s = base * P.ssz[i] * DPR;
+    g.fillStyle = colorOf(i); g.globalAlpha = 0.55;
+    g.fillRect(P.sx[i] - s/2, P.sy[i] - s/2, s, s);
+    shown++;
+  }
+  g.globalAlpha = 1;
+
+  if (selEpIdx >= 0) {
+    const a0 = OFF[selEpIdx], a1 = OFF[selEpIdx + 1];
+    g.lineWidth = 1.8 * DPR; g.lineCap = 'round';
+    for (let i = a0; i + 1 < a1; i++) {
+      const t = (TT[i] - TT[a0]) / Math.max(1e-6, TT[a1-1] - TT[a0]);
+      g.strokeStyle = ramp(t, CMAP_T); g.globalAlpha = 0.95;
+      g.beginPath(); g.moveTo(P.sx[i], P.sy[i]); g.lineTo(P.sx[i+1], P.sy[i+1]); g.stroke();
+    }
+    const s0 = Math.max(2.6, base) * DPR * 1.6;
+    g.globalAlpha = 1;
+    g.beginPath(); g.arc(P.sx[a0], P.sy[a0], s0, 0, 7); g.fillStyle = '#2ecc71'; g.fill();
+    g.strokeStyle = '#000'; g.lineWidth = 1.2*DPR; g.stroke();
+    g.beginPath(); g.arc(P.sx[a1-1], P.sy[a1-1], s0, 0, 7); g.fillStyle = '#e74c3c'; g.fill(); g.stroke();
+  }
+  document.getElementById('k_shown').textContent = shown.toLocaleString();
+}
+
+// ---------- 动态层：训练栏游标 ----------
+function dot(ctx, x, y, col, r) {
+  r *= DPR;
+  ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = col; ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * DPR; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 7);
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.6 * DPR; ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+function star(ctx, x, y, r, col) {
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI/2 + k * Math.PI/5, rr = (k % 2 ? r*0.46 : r);
+    const px = x + Math.cos(a)*rr, py = y + Math.sin(a)*rr;
+    k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+}
+
+// 评测栏的触发点：优先用逐帧 p 现算（可随阈值滑块变化），否则退回 META.ev_fire
+const FIRE_WIN = 5, FIRE_NEED = 3;
+let alpha = META.alpha0 || 0.05;
+const fireCache = {};                     // "batch:rollout" → {idx, t, pmin}
+function fireRule(p, lo, hi, a) {
+  for (let i = lo; i + FIRE_WIN <= hi; i++) {
+    let c = 0, mn = 1;
+    for (let j = i; j < i + FIRE_WIN; j++) { if (p[j] < a) c++; mn = Math.min(mn, p[j]); }
+    if (c >= FIRE_NEED) return { idx: i - lo, pmin: mn };
+  }
+  return { idx: -1, pmin: null };
+}
+function batchFire(b, r) {
+  const key = `${b}:${r}`;
+  if (fireCache[key] !== undefined) return fireCache[key];
+  const B = BATCHES[b];
+  let out = null;
+  if (EVP && B && B.n && B.off && r + 1 < B.off.length) {
+    const lo = B.off[r], hi = B.off[r + 1];
+    if (hi - lo >= FIRE_WIN) {
+      const f = fireRule(EVP, lo, hi, alpha);
+      out = (f.idx >= 0)
+        ? { idx: f.idx, t: B.t[lo + f.idx], pmin: f.pmin }
+        : { idx: -1, t: null, pmin: null };
+    }
+  } else {
+    const f = (META.ev_fire || {})[String(b)];
+    out = (f && f[String(r)]) || null;
+  }
+  fireCache[key] = out;
+  return out;
+}
+function resetFire() { for (const k in fireCache) delete fireCache[k]; }
+
+
+function sampleAtTime(epi, t) {
+  const a0 = OFF[epi], a1 = OFF[epi + 1];
+  if (a1 <= a0) return -1;
+  let lo = a0, hi = a1 - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (TT[mid] < t) lo = mid + 1; else hi = mid; }
+  let i = lo;
+  if (i > a0 && Math.abs(TT[i-1] - t) < Math.abs(TT[i] - t)) i--;
+  return i;
+}
+
+function segAt(epi, t) {
+  const segs = (META.segs && META.segs[String(epi)]) || [];
+  for (const s of segs) if (t >= s[0] && t < s[1]) return s;
+  return segs.length ? segs[segs.length-1] : null;
+}
+
+function drawMarkerA() {
+  if (selEpIdx < 0 || VA.el.readyState < 1) return;   // 视频未就绪则不画
+  const P = PA, ctx = P.ctx;
+  const t = VA.el.currentTime;
+  const i = sampleAtTime(selEpIdx, t);
+  if (i < 0) return;
+  const seg = segAt(selEpIdx, t);
+  const col = (seg && seg[3] >= 0) ? clsColor[seg[3]] : (META.no_cls ? '#ffb648' : '#ffffff');
+
+  const a0 = OFF[selEpIdx];
+  ctx.strokeStyle = col; ctx.globalAlpha = 0.9; ctx.lineWidth = 2.6 * DPR;
+  ctx.beginPath();
+  let started = false;
+  for (let j = i; j >= a0 && TT[i] - TT[j] <= 1.2; j--) {
+    if (!started) { ctx.moveTo(P.sx[j], P.sy[j]); started = true; } else ctx.lineTo(P.sx[j], P.sy[j]);
+  }
+  ctx.stroke();
+
+  dot(ctx, P.sx[i], P.sy[i], col, 7);
+  VA.sync();
+  if (seg) {
+    VA.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
+      + `c${seg[3]} · ${seg[0].toFixed(1)}–${seg[1].toFixed(1)}s<br>${seg[2]}`;
+  } else if (META.no_cls) {
+    VA.cap.innerHTML = `<span class="chip" style="background:${col}"></span>`
+      + `${META.ep_names[selEpIdx]} · t=${t.toFixed(2)}s<br>`
+      + `异常分数 ${SC[i].toFixed(3)}　p=${SCp ? SCp[i].toFixed(3) : '—'}`;
+  }
+}
+
+// ---------- 评测栏（白点；两批分开） ----------
+function ensureEv(b) {
+  const B = BATCHES[b];
+  if (B.sx) return B;
+  B.sx = new Float32Array(B.n); B.sy = new Float32Array(B.n);
+  B.ssz = new Float32Array(B.n); B.zrot = new Float32Array(B.n);
+  return B;
+}
+
+function projectEv(B, cam) {
+  const { cyw, syw, cp, sp, scale0, cx, cyy } = cam;
+  for (let i = 0; i < B.n; i++) {
+    const x = B.z[3*i], y = B.z[3*i+1], z = B.z[3*i+2];
+    const x1 = cyw * x + syw * z;
+    const z1 = -syw * x + cyw * z;
+    const y2 = cp * y - sp * z1;
+    const z2 = sp * y + cp * z1;
+    B.zrot[i] = z2;
+    const f = fov / (fov + z2 * ext * 1.2);
+    B.sx[i] = cx + x1 * scale0 * f;
+    B.sy[i] = cyy - y2 * scale0 * f;
+    B.ssz[i] = f;
+  }
+}
+
+function activeBatches() {
+  return batchSel === 2 ? [0, 1] : [batchSel];
+}
+
+function drawStaticB() {
+  const P = PB, g = P.bg;
+  const cam = updateCam(P);
+  for (const b of activeBatches()) if (BATCHES[b].n) projectEv(ensureEv(b), cam);
+
+  g.clearRect(0, 0, P.W, P.H); g.fillStyle = '#0b0d12'; g.fillRect(0, 0, P.W, P.H);
+  drawAxes(P, g, cam);
+
+  if (!NE && !N2) {
+    g.fillStyle = '#54607a'; g.font = `${13*DPR}px sans-serif`;
+    g.fillText('（无评测数据）', 20*DPR, 40*DPR); return;
+  }
+  const showPts = document.getElementById('evShow').checked;
+  const showLines = document.getElementById('evLines').checked;
+  const okOnly = document.getElementById('evOkOnly').checked;
+  const base = parseFloat(document.getElementById('psize').value) * 0.85;
+
+  for (const b of activeBatches()) {
+    const B = BATCHES[b];
+    if (!B.n) continue;
+    const dense = (batchSel !== 2);
+
+    const pal = META.ev_palette ? 1 : 0;
+    if (showLines) {
+      g.strokeStyle = B.tint; g.globalAlpha = dense ? 0.10 : 0.06; g.lineWidth = 1.0 * DPR;
+      for (let r = 0; r + 1 < B.off.length; r++) {
+        const a0 = B.off[r], a1 = B.off[r + 1];
+        if (a1 - a0 < 2) continue;
+        if (pal) { g.strokeStyle = PAL[r % PAL.length]; g.globalAlpha = 0.35; }
+        g.beginPath();
+        let started = false;
+        for (let i = a0; i < a1; i++) {
+          if (okOnly && !B.ok[i]) continue;
+          if (!started) { g.moveTo(B.sx[i], B.sy[i]); started = true; } else g.lineTo(B.sx[i], B.sy[i]);
+        }
+        g.stroke();
+      }
+      g.strokeStyle = B.tint; g.globalAlpha = 1;
+    }
+
+    if (showPts) {
+      const ord = new Array(B.n); for (let i = 0; i < B.n; i++) ord[i] = i;
+      ord.sort((a2, b2) => B.zrot[a2] - B.zrot[b2]);
+      for (let k = 0; k < B.n; k++) {
+        const i = ord[k];
+        if (okOnly && !B.ok[i]) continue;
+        const s = base * B.ssz[i] * DPR;
+        const rr = B.ep[i];
+        g.fillStyle = pal ? PAL[rr % PAL.length] : B.tint;
+        g.globalAlpha = pal ? 0.62 : ((b === 1) ? 0.45 : 0.38);
+        g.fillRect(B.sx[i] - s/2, B.sy[i] - s/2, s, s);
+      }
+      g.globalAlpha = 1;
+    }
+
+    // 触发点（橙星）
+    for (let r = 0; r + 1 < B.off.length; r++) {
+      const f = batchFire(b, r);
+      if (!f || f.idx < 0) continue;
+      const i2 = B.off[r] + Math.min(f.idx, B.off[r+1] - B.off[r] - 1);
+      const sel = (b === batchSel && r === selEvIdx);
+      if (document.getElementById('onlyCurOOD').checked && !sel) continue;
+      const R = (sel ? 11 : 9) * DPR;
+      g.globalAlpha = sel ? 1 : 0.92;
+      g.fillStyle = '#0b0d12';                       // 深色光晕，压住底下的白点
+      g.beginPath(); g.arc(B.sx[i2], B.sy[i2], R * 1.55, 0, 2*Math.PI); g.fill();
+      g.strokeStyle = '#ff7a18'; g.lineWidth = (sel ? 1.8 : 1.3) * DPR;
+      g.setLineDash([3*DPR, 3*DPR]);
+      g.beginPath(); g.arc(B.sx[i2], B.sy[i2], R * 1.15, 0, 2*Math.PI); g.stroke();
+      g.setLineDash([]);
+      star(g, B.sx[i2], B.sy[i2], R, '#ff7a18');
+      star(g, B.sx[i2], B.sy[i2], R * 0.55, '#ffd08a');
+      const ro2 = (B.rollouts || [])[r] || {};
+      const lab = `首OOD ${ro2.layout !== undefined ? ro2.layout : r}`;
+      if (!sel) { g.globalAlpha = 1; continue; }
+      g.font = `bold ${10*DPR}px sans-serif`;
+      const tw = g.measureText(lab).width;
+      g.fillStyle = '#1a1206'; g.globalAlpha = 0.95;
+      g.fillRect(B.sx[i2] + R * 1.25, B.sy[i2] - 15*DPR, tw + 8*DPR, 14*DPR);
+      g.fillStyle = '#ffb648';
+      g.fillText(lab, B.sx[i2] + R * 1.25 + 4*DPR, B.sy[i2] - 4*DPR);
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+function sampleAtTimeEv(b, ridx, t) {
+  const B = BATCHES[b];
+  const a0 = B.off[ridx], a1 = B.off[ridx + 1];
+  if (a1 <= a0) return -1;
+  let lo = a0, hi = a1 - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (B.t[mid] < t) lo = mid + 1; else hi = mid; }
+  let i = lo;
+  if (i > a0 && Math.abs(B.t[i-1] - t) < Math.abs(B.t[i] - t)) i--;
+  return i;
+}
+
+function drawMarkerB() {
+  if (selEvIdx < 0 || batchSel === 2) return;         // 叠加模式下不画游标
+  if (VB.el.readyState < 1) return;                    // 视频没就绪就不画
+  const B = ensureEv(batchSel);
+  if (!B || !B.n) return;
+  const P = PB, ctx = P.ctx;
+  const t = VB.el.currentTime;
+  const i = sampleAtTimeEv(batchSel, selEvIdx, t);
+  if (i < 0) return;
+  const col = '#ffb648';
+
+  const a0 = B.off[selEvIdx];
+  const fPrev = batchFire(batchSel, selEvIdx);
+  const pNow = EVP ? EVP[i] : null;
+  const isNow = (pNow !== null && pNow < alpha);
+  const fIdxAbs = (fPrev && fPrev.idx >= 0) ? a0 + Math.min(fPrev.idx, B.off[selEvIdx+1] - a0 - 1) : -1;
+  for (let seg = 0; seg < 2; seg++) {           // 0 = 触发前（琥珀），1 = 触发后（红）
+    const lo = seg === 0 ? a0 : Math.max(a0, fIdxAbs);
+    const hi = seg === 0 ? Math.min(i, fIdxAbs >= 0 ? fIdxAbs : i) : i;
+    if (fIdxAbs < 0 && seg === 1) break;
+    if (hi < lo) continue;
+    ctx.strokeStyle = seg === 0 ? col : '#ff5a1f';
+    ctx.globalAlpha = 0.9; ctx.lineWidth = 2.4 * DPR;
+    ctx.beginPath();
+    for (let j = lo; j <= hi; j++) (j === lo ? ctx.moveTo(B.sx[j], B.sy[j]) : ctx.lineTo(B.sx[j], B.sy[j]));
+    ctx.stroke();
+  }
+
+  const f0 = batchFire(batchSel, selEvIdx);
+  const fired = f0 && f0.idx >= 0 && f0.t !== null && t >= f0.t;
+  if (fired) {
+    const fi = a0 + Math.min(f0.idx, B.off[selEvIdx+1] - a0 - 1);
+    ctx.strokeStyle = '#ff5a1f'; ctx.lineWidth = 2.0 * DPR; ctx.globalAlpha = 0.95;
+    ctx.setLineDash([4*DPR, 3*DPR]);
+    ctx.beginPath(); ctx.arc(B.sx[fi], B.sy[fi], 11*DPR, 0, 2*Math.PI); ctx.stroke();
+    ctx.setLineDash([]);
+    star(ctx, B.sx[fi], B.sy[fi], 8*DPR, '#ff5a1f');
+    ctx.fillStyle = '#ff8a5c'; ctx.font = `bold ${10*DPR}px sans-serif`;
+    ctx.fillText('OOD', Math.min(P.W - 34*DPR, B.sx[fi] + 13*DPR), B.sy[fi] + 3*DPR);
+    ctx.globalAlpha = 1;
+  }
+  dot(ctx, B.sx[i], B.sy[i], isNow ? '#ff2d55' : col, 7);
+  VB.sync();
+  const ro = (B.rollouts || [])[selEvIdx] || {};
+  const tag = batchSel === 1
+    ? `eval25 #${selEvIdx} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'} · score ${(ro.score||0).toFixed(1)}`
+    : `#${selEvIdx} ${ro.cfg || ''} · layout ${ro.layout} · ${ro.ok ? '成功' : '失败'}`;
+  const curTxt = (pNow === null)
+    ? ''
+    : `<br><span style="color:${isNow ? '#ff2d55' : '#7fd1a8'}">${isNow ? '● 当前帧 OOD' : '○ 当前帧正常'}　p=${pNow.toFixed(3)}</span>`;
+  const firstTxt = (f0 && f0.idx >= 0)
+    ? `<span style="color:${fired ? '#ff5a1f' : '#e0a33a'}">${fired ? '● 已过首OOD' : '○ 首OOD 未到'}</span>`
+      + `　首OOD ${f0.t.toFixed(1)}s（窗内 3/5，pmin ${f0.pmin !== undefined && f0.pmin !== null ? f0.pmin.toFixed(3) : '—'}）`
+    : `<span style="color:#7c8698">○ 全程未触发（α=${alpha.toFixed(3)}）</span>`;
+  VB.cap.innerHTML = `<span class="chip" style="background:${isNow ? '#ff2d55' : col}"></span>${tag}<br>`
+    + `t=${t.toFixed(2)}s　已投影 ${i - a0 + 1}/${B.off[selEvIdx+1] - a0} 帧`
+    + curTxt + `<br>` + firstTxt;
+}
+
+function drawDynamic() {
+  PA.ctx.drawImage(PA.bgCv, 0, 0);
+  if (!META.onePane) PB.ctx.drawImage(PB.bgCv, 0, 0);
+  drawMarkerA();
+  drawMarkerB();
+}
+
+function draw() {
+  drawStaticA();
+  if (!META.onePane) drawStaticB();
+  drawDynamic();
+}
+
+let playReq = null;
+function startLoop() {
+  if (playReq) return;
+  const step = () => { drawDynamic(); playReq = requestAnimationFrame(step); };
+  playReq = requestAnimationFrame(step);
+}
+function stopLoop() {
+  if (playReq) { cancelAnimationFrame(playReq); playReq = null; }
+  drawDynamic();
+}
+
+// ---------- 交互 ----------
+let drag = null;
+for (const P of [PA, PB]) {
+  P.el.addEventListener('mousedown', e => {
+    drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey };
+    P.el.classList.add('dragging'); e.preventDefault();
+  });
+  P.el.addEventListener('contextmenu', e => e.preventDefault());
+  P.el.addEventListener('wheel', e => {
+    e.preventDefault();
+    zoom = Math.max(0.25, Math.min(8, zoom * Math.exp(-e.deltaY * 0.0012)));
+    draw();
+  }, { passive: false });
+  P.el.addEventListener('dblclick', () => resetView());
+}
+window.addEventListener('mousemove', e => {
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (drag.pan) { panX += dx; panY += dy; }
+    else { yaw += dx * 0.008; pitch = Math.max(-1.55, Math.min(1.55, pitch + dy * 0.008)); }
+    draw();
+  } else hover(e);
+});
+window.addEventListener('mouseup', () => {
+  drag = null; PA.el.classList.remove('dragging'); PB.el.classList.remove('dragging');
+});
+
+const PRESETS = { iso: [-0.6, 0.5], p12: [0, 0], p23: [-Math.PI/2, 0], p13: [0, 1.45] };
+function resetView() { [yaw, pitch] = PRESETS.p12; zoom = 1; panX = 0; panY = 0; draw(); }
+document.getElementById('reset').onclick = resetView;
+document.querySelectorAll('[data-preset]').forEach(b => {
+  b.onclick = () => { [yaw, pitch] = PRESETS[b.dataset.preset]; draw(); };
+});
+let spinReq = null;
+document.getElementById('spin').onchange = e => {
+  if (e.target.checked) {
+    const step = () => { yaw += 0.006; draw(); spinReq = requestAnimationFrame(step); };
+    spinReq = requestAnimationFrame(step);
+  } else if (spinReq) { cancelAnimationFrame(spinReq); spinReq = null; }
+};
+
+function hover(e) {
+  const tip = document.getElementById('tip');
+  let hit = null;
+  for (const P of [PA, PB]) {
+    const r = P.el.getBoundingClientRect();
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+      hit = { P, mx: (e.clientX - r.left) * DPR, my: (e.clientY - r.top) * DPR, r,
+              px: e.clientX - r.left, py: e.clientY - r.top };
+      break;
+    }
+  }
+  if (!hit) { tip.style.display = 'none'; return; }
+  const { P, mx, my } = hit;
+  let best = -1, bd = (9 * DPR) ** 2;
+  if (P === PA) {
+    for (let i = 0; i < N; i++) {
+      if (cmode === 'cls' && !clsVisible[CLS[i]]) continue;
+      const d = (P.sx[i]-mx)**2 + (P.sy[i]-my)**2;
+      if (d < bd) { bd = d; best = i; }
+    }
+  } else {
+    let bb = batchSel === 2 ? 0 : batchSel;
+    const B = BATCHES[bb];
+    if (B && B.sx) for (let i = 0; i < B.n; i++) {
+      const d = (B.sx[i]-mx)**2 + (B.sy[i]-my)**2;
+      if (d < bd) { bd = d; best = i; }
+    }
+  }
+  if (best < 0) { tip.style.display = 'none'; return; }
+  tip.style.display = 'block';
+  tip.style.left = (hit.px + 14) + 'px';
+  tip.style.top = (hit.py + 14) + 'px';
+  if (P === PA) {
+    tip.innerHTML = `训练 · ${META.ep_names[EPI[best]]}　t=${TT[best].toFixed(2)}s<br>`
+      + (META.no_cls ? '' : `${(META.cls_names && META.cls_names[CLS[best]]) || 'c'+CLS[best]}　`)
+      + `相位 ${(ANG[best]*180/Math.PI).toFixed(0)}°<br>`
+      + (META.no_cls ? `异常分数 ${SC[best].toFixed(3)}` : `不典型度 ${SC[best].toFixed(3)}`);
+  } else {
+    const bb = batchSel === 2 ? 0 : batchSel;
+    const B = BATCHES[bb];
+    const r = B.ep[best];
+    const ro = (B.rollouts || [])[r] || {};
+    tip.innerHTML = `${B.name} · #${r}　layout ${ro.layout !== undefined ? ro.layout : '?'}<br>`
+      + `${ro.ok ? '成功' : '失败'}　t=${B.t[best].toFixed(2)}s`
+      + (ro.score !== undefined ? `　score ${ro.score.toFixed(1)}` : '');
+  }
+}
+
+// ---------- 侧栏 ----------
+const clsBox = document.getElementById('clss');
+const epSel = document.getElementById('epsel');
+const batchSelEl0 = document.getElementById('batchsel');
+const BATCH_OPTS = Array.from(batchSelEl0.options).map(o => ({ v: o.value, t: o.textContent }));
+
+epSel.onchange = () => { selEpIdx = parseInt(epSel.value, 10); setVideo(selEpIdx); draw(); };
+
+// 随数据集刷新侧栏（换维数 / 首次加载都走这里）
+function refreshData() {
+  document.getElementById('ttl').textContent = META.pageTitle || '潜空间浏览器';
+  document.getElementById('sub').textContent = META.title || '';
+  document.getElementById('k_n').textContent = (META.n || N).toLocaleString();
+  document.getElementById('k_ep').textContent = META.n_ep;
+  document.getElementById('k_var').textContent = (META.pc_var || []).join(' / ') + ' %';
+
+  const dl = document.getElementById('dimlabel');
+  if (dl && META.selectorLabel) dl.textContent = META.selectorLabel;
+  const s = document.getElementById('cmode');
+  ['cls', 'ang'].forEach(v => {
+    const has = (v !== 'cls') || !META.no_cls;
+    const o = s.querySelector(`option[value="${v}"]`);
+    if (!has && o) o.remove();
+  });
+  if (META.no_cls) {
+    document.getElementById('clsbox').style.display = 'none';
+  } else {
+    document.getElementById('clsbox').style.display = '';
+    clsBox.innerHTML = '';
+    const cname = c => (META.cls_names && META.cls_names[c]) ? META.cls_names[c] : `c${c}`;
+  clsList.forEach(c => {
+      const row = document.createElement('label');
+      row.className = 'row';
+      row.innerHTML = `<input type="checkbox" checked data-c="${c}">
+        <span class="sw" style="background:${clsColor[c]}"></span>
+        <span>${cname(c)}</span><span class="cnt">${(META.cls_counts[c]||0).toLocaleString()}</span>`;
+      row.querySelector('input').onchange = ev => { clsVisible[c] = ev.target.checked; draw(); };
+      clsBox.appendChild(row);
+    });
+  }
+  s.value = cmode;
+
+  const elA = document.getElementById('ptitleA');
+  if (elA && META.paneATitle) elA.innerHTML = META.paneATitle;
+
+  // 批次下拉：按当前数据集有无 eval25 决定选项
+  batchSelEl0.innerHTML = '';
+  BATCH_OPTS.forEach(o => {
+    if (o.v === '1' && !N2) return;
+    if (o.v === '2' && !(N2 && NE)) return;
+    const op = document.createElement('option');
+    op.value = o.v;
+    op.textContent = (o.v === '0' && META.batch0Label) ? META.batch0Label : o.t;
+    batchSelEl0.appendChild(op);
+  });
+  if (!N2) { batchSel = 0; batchSelEl0.value = '0'; }
+
+  epSel.innerHTML = '<option value="-1">（不显示轨迹）</option>';
+  const onlyVid = META.videoEpisodes;
+  (META.ep_names || []).forEach((name, i) => {
+    if (onlyVid && onlyVid.indexOf(i) < 0) return;
+    const o = document.createElement('option');
+    o.value = i; o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)`;
+    epSel.appendChild(o);
+  });
+  epSel.value = '-1';
+
+  initAlphaUI();          // 先定阈值（α 来自数据集 meta），再据此算触发点
+  fillRollouts(batchSel);
+  updatePaneTitle();
+  buildOODList();
+  updateLegend();
+  updateStats();
+}
+
+function mkVideo(p) {
+  const o = {
+    box: document.getElementById(p.box), btn: document.getElementById(p.btn),
+    el: document.getElementById(p.video), seek: document.getElementById(p.seek),
+    time: document.getElementById(p.time), cap: document.getElementById(p.cap),
+    title: document.getElementById(p.title), seeking: false, dir: p.dir, ext: p.ext || 'mp4',
+  };
+  o.btn.onclick = () => { if (o.el.paused) o.el.play(); else o.el.pause(); };
+  o.step = (dt) => {
+    const d = o.el.duration || 0;
+    if (!d) return;
+    o.el.pause();
+    o.el.currentTime = Math.max(0, Math.min(d - 0.01, o.el.currentTime + dt));
+    drawDynamic();
+  };
+  if (p.prev) document.getElementById(p.prev).onclick = () => o.step(-0.2);
+  if (p.next) document.getElementById(p.next).onclick = () => o.step(+0.2);
+  o.seek.addEventListener('pointerdown', () => { o.seeking = true; });
+  o.seek.addEventListener('pointerup',   () => { o.seeking = false; });
+  o.seek.addEventListener('input', () => {
+    const d = o.el.duration || 0;
+    if (d > 0) { o.el.currentTime = (o.seek.value / 1000) * d; drawDynamic(); }
+  });
+  o.sync = () => {
+    const d = o.el.duration || 0;
+    if (d > 0 && !o.seeking) o.seek.value = (o.el.currentTime / d) * 1000;
+    o.time.innerHTML = `<span>${o.el.currentTime.toFixed(2)}s</span><span>${(d||0).toFixed(2)}s</span>`;
+  };
+  o.setCam = (cam) => {
+    if (!cam || cam === o.cam) return;
+    o.cam = cam;
+    if (!o.pat) return;
+    const t = o.el.currentTime || 0;
+    o.load(o.pat);
+    o.el.addEventListener('loadedmetadata', () => { o.el.currentTime = t; }, { once: true });
+  };
+  o.load = (pat) => {
+    const name = pat ? String(pat).replace('{cam}', o.cam || 'head') : '';
+    if (!pat) { o.el.pause(); o.el.removeAttribute('src'); o.el.load();
+                o.box.classList.remove('on'); return; }
+    o.pat = pat;
+    o.name = name; o.triedWebm = false;
+    o.el.src = `${o.dir}/${name}.mp4`;        // 主用 mp4（H.264）
+    o.el.load();
+    o.title.textContent = name;
+    o.box.classList.add('on');
+    const pr = o.el.play();
+    if (pr && pr.catch) pr.catch(() => { o.btn.textContent = '播放'; });
+  };
+  o.el.addEventListener('timeupdate', o.sync);
+  o.el.addEventListener('loadedmetadata', o.sync);
+  o.el.addEventListener('seeked', () => { o.sync(); drawDynamic(); });
+  o.el.addEventListener('play',  () => { o.btn.textContent = '暂停'; startLoop(); });
+  o.el.addEventListener('pause', () => { o.btn.textContent = '播放'; stopLoop(); });
+  o.el.addEventListener('error', () => {
+    if (o.name && !o.triedWebm) {              // mp4 不行就试 webm（VP9）
+      o.triedWebm = true;
+      o.el.src = `${o.dir}_webm/${o.name}.webm`;
+      o.el.load(); o.el.play().catch(() => {});
+      return;
+    }
+    o.cap.innerHTML = `<span style="color:#e17055">找不到视频：${o.dir}/${o.name}.mp4</span>`;
+  });
+  return o;
+}
+const CAM_LABEL = {head:'头部', left_wrist:'左手', right_wrist:'右手'};
+function fillCams(box, list, vid) {
+  if (!box) return;
+  const useful = (list || []).filter(c => c);
+  box.innerHTML = useful.map(c =>
+    `<button data-cam="${c}">${CAM_LABEL[c] || c}</button>`).join('');
+  box.style.display = useful.length > 1 ? '' : 'none';
+  box.querySelectorAll('button').forEach(b => {
+    b.onclick = () => { vid.setCam(b.dataset.cam); markCam(box, vid.cam); };
+  });
+  markCam(box, vid.cam || useful[0]);
+}
+function markCam(box, cam) {
+  if (!box) return;
+  box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cam === cam));
+}
+const VA = mkVideo({box:'vid', title:'vtitle', video:'v', btn:'vbtn',
+                    seek:'vseek', time:'vtime', cap:'vcap', dir: META.videoDir,
+                    prev:'vprev', next:'vnext'});
+VA.cam = (META.train_cams && META.train_cams[0]) || 'head';
+fillCams(document.getElementById('vcam'), META.train_cams || ['head'], VA);
+const VB = mkVideo({box:'vidB', title:'vtitleB', video:'vB', btn:'vbtnB',
+                    seek:'vseekB', time:'vtimeB', cap:'vcapB', dir: META.ev_videoDir,
+                    prev:'vprevB', next:'vnextB'});
+VB.cam = 'head';
+fillCams(document.getElementById('vcamB'), META.ev_cams || ['head'], VB);
+
+let selEvIdx = -1;
+
+// 通过"训练集的 episode 序号"装载左栏视频
+function setVideo(epi) {
+  if (!META.videoDir) { document.getElementById('vid').classList.remove('on'); return; }
+  VA.load(epi < 0 ? '' : META.ep_names[epi]);
+}
+
+document.getElementById('dim').onchange = () => draw();
+document.getElementById('psize').oninput = () => draw();
+document.getElementById('fov').oninput = e => { fov = parseFloat(e.target.value); draw(); };
+document.getElementById('cmode').onchange = e => {
+  cmode = e.target.value;
+  document.getElementById('clsbox').style.display = (cmode === 'cls') ? '' : 'none';
+  updateLegend(); draw();
+};
+const evSel = document.getElementById('evsel');
+const batchSelEl = document.getElementById('batchsel');
+
+function fillRollouts(b) {
+  evSel.innerHTML = '<option value="-1">（不播放）</option>';
+  (BATCHES[b].rollouts || []).forEach((r, i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    const f = batchFire(b, i);
+    const tag = (f && f.idx >= 0) ? `  ⚑ OOD@${f.t.toFixed(1)}s` : '  ○ 无触发';
+    o.textContent = BATCHES[b].label(i) + ` (${r.n} 帧)${tag}`;
+    evSel.appendChild(o);
+  });
+  evSel.value = -1;
+  selEvIdx = -1;
+}
+
+function updatePaneTitle() {
+  const el = document.getElementById('ptitleB');
+  if (!el) return;
+  if (META.paneBTitle && batchSel === 0) { el.innerHTML = META.paneBTitle; return; }
+  if (batchSel === 2) {
+    el.innerHTML = `<b>评测轨迹 · 两批叠加</b> · 第一批 ${NE.toLocaleString()} 帧(白) + 第二批 ${N2.toLocaleString()} 帧(浅青)`;
+  } else if (batchSel === 1) {
+    el.innerHTML = `<b>评测轨迹 · 第二批 eval25</b> · ${N2.toLocaleString()} 帧 / ${(META.ev2_rollouts||[]).length} 集 `
+      + `<span style="color:#2ecc71">真实三视角 + 真实关节状态</span>（T 臂，成功 1/25）`;
+  } else {
+    el.innerHTML = `<b>评测轨迹 · 第一批</b> · ${NE.toLocaleString()} 帧 / ${(META.ev_rollouts||[]).length} 个 rollout `
+      + `<span class="warn">近似投影（未存关节状态）</span>`;
+  }
+}
+
+batchSelEl.onchange = () => {
+  batchSel = parseInt(batchSelEl.value, 10);
+  updatePaneTitle();
+  VB.dir = (batchSel === 1) ? META.eval25VideoDir : META.ev_videoDir;
+  if (batchSel === 2) {
+    evSel.disabled = true; selEvIdx = -1; VB.load('');
+    document.getElementById('evsel').title = '叠加模式下不播放（先选单一批次）';
+  } else {
+    evSel.disabled = false;
+    fillRollouts(batchSel);
+    VB.load('');
+  }
+  draw();
+};
+
+evSel.onchange = () => {
+  selEvIdx = parseInt(evSel.value, 10);
+  Array.from(document.querySelectorAll('#oodlist .oodrow'))
+       .forEach(c => c.classList.toggle('on', +c.dataset.idx === selEvIdx));
+  const B = BATCHES[batchSel];
+  VB.load(selEvIdx < 0 ? '' : (B.rollouts[selEvIdx] || {}).file);
+  draw();
+};
+
+function buildOODList() {
+  const box = document.getElementById('oodbox');
+  if (!box) return;
+  const has = (META.ev_fire && META.ev_fire['0']) || EVP;
+  if (!has || !(BATCHES[0].rollouts || []).length) return;
+  box.style.display = '';
+  const list = document.getElementById('oodlist');
+  list.innerHTML = '';
+  const rolls = BATCHES[0].rollouts || [];
+  let nHit = 0, nFail = 0, nOk = 0;
+  rolls.forEach((r, i) => {
+    if (!r.ok) nFail++;
+    const f = batchFire(0, i);
+    const hit = !!(f && f.idx >= 0);
+    if (hit) { nHit++; if (r.ok) nOk++; }
+    const row = document.createElement('div');
+    row.className = 'oodrow';
+    row.dataset.idx = i;
+    row.innerHTML = `<span style="width:8px;height:8px;border-radius:2px;background:${hit ? '#ff7a18' : '#39404e'}"></span>`
+      + `<span>#${r.layout}</span>`
+      + (r.group ? `<span style="color:#6b7688;font-size:10px">${r.group}</span>` : '')
+      + `<span style="color:${r.ok ? '#7fd1a8' : '#8b95a8'}">${r.ok ? '成功' : '失败'}</span>`
+      + `<span class="st ${hit ? 'hit' : 'miss'}">${hit ? '⚑ ' + f.t.toFixed(1) + 's' : '○ 未检出'}</span>`;
+    row.onclick = () => {
+      const s = document.getElementById('evsel');
+      s.value = String(i); s.onchange();
+    };
+    list.appendChild(row);
+  });
+  const sum = document.createElement('div');
+  sum.className = 'kv';
+  sum.style.marginTop = '4px';
+  sum.innerHTML = `<span>失败 ${nFail} 局中检出</span><b>${nHit} / ${nFail}</b>`;
+  list.appendChild(sum);
+  const sum2 = document.createElement('div');
+  sum2.className = 'kv';
+  sum2.innerHTML = `<span>成功 ${rolls.length - nFail} 局中误报</span><b>${nOk}</b>`;
+  list.appendChild(sum2);
+  if (rolls.some(r => r.group)) {
+    ['样本内', '样本外'].forEach(gname => {
+      const idx = rolls.map((r, i) => [r, i]).filter(([r]) => r.group === gname && !r.ok);
+      const hit = idx.filter(([, i]) => { const f = batchFire(0, i); return f && f.idx >= 0; }).length;
+      const d = document.createElement('div');
+      d.className = 'kv';
+      d.innerHTML = `<span>　${gname}失败中检出</span><b>${hit} / ${idx.length}</b>`;
+      list.appendChild(d);
+    });
+  }
+  Array.from(list.querySelectorAll('.oodrow'))
+       .forEach(c => c.classList.toggle('on', +c.dataset.idx === selEvIdx));
+}
+
+// 阈值滑块：重算全部触发点 → 重画星标、重建清单
+function initAlphaUI() {
+  alpha = (META.alpha0 !== undefined) ? META.alpha0 : 0.05;
+  const sl = document.getElementById('alpha');
+  const lab = document.getElementById('alphav');
+  if (sl) sl.value = String(Math.round(alpha * 1000));
+  if (lab) lab.textContent = alpha.toFixed(3);
+  if (!sl) return;
+  const apply = () => {
+    alpha = Math.max(0.001, parseInt(sl.value, 10) / 1000);   // 1..200 → 0.001..0.200
+    lab.textContent = alpha.toFixed(3);
+    resetFire();
+    buildOODList();
+    updateStats();
+    draw();                     // 整屏重画：底图与游标必须同一套触发点
+  };
+  document.querySelectorAll('#apresets button').forEach(b => {
+    b.onclick = () => {
+      sl.value = String(Math.round(parseFloat(b.dataset.a) * 1000));
+      apply();
+    };
+  });
+  sl.oninput = apply; sl.onchange = apply;
+  const only = document.getElementById('onlyCurOOD');
+  if (only) {
+    only.checked = !!META.onlyCurOODDefault;    // 触发局很多时默认只看当前
+    only.onchange = () => { draw(); };
+  }
+}
+
+function autoPlayFirstFire() {
+  if (!META.autoplayFirstFire) { VB.load(''); return; }
+  const f = (META.ev_fire || {})['0'] || {};
+  const k = Object.keys(f).find(j => f[j] && f[j].idx >= 0);
+  if (k !== undefined) {
+    const s = document.getElementById('evsel');
+    s.value = k; selEvIdx = parseInt(k, 10);
+    VB.load((BATCHES[0].rollouts[selEvIdx] || {}).file);
+  }
+}
+
+['evShow', 'evLines', 'evOkOnly'].forEach(id => {
+  document.getElementById(id).onchange = () => draw();
+});
+
+function updateLegend() {
+  const el = document.getElementById('legend');
+  if (cmode === 'cls') {
+    el.innerHTML = clsList.map(c => `<div><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${clsColor[c]};margin-right:5px"></span>${(META.cls_names && META.cls_names[c]) || 'c'+c}</div>`).join('');
+  } else if (cmode === 'ep') {
+    el.textContent = '每个 episode 一种颜色（循环取色）';
+  } else {
+    const name = {ang:'相位角 −π → π', t:'时间 0 → ' + META.t_max.toFixed(1) + 's', score:'不典型度 低 → 高'}[cmode];
+    const grad = Array.from({length: 40}, (_, i) => ramp(i/39, cmode === 'score' ? CMAP_S : CMAP_T)).join(',');
+    el.innerHTML = `${name}<div class="bar" style="width:150px;background:linear-gradient(90deg,${grad})"></div>`;
+  }
+}
+updateLegend();
+
+// ---------- 顶栏统计 / 侧栏开关 / 帮助 / 快捷键 ----------
+function updateStats() {
+  const el = document.getElementById('tstats');
+  if (!el) return;
+  const rolls = (BATCHES[0] && BATCHES[0].rollouts) || [];
+  const nFail = rolls.filter(r => !r.ok).length;
+  const hasOOD = !!EVP || !!(META.ev_fire && META.ev_fire['0']);
+  let hit = -1;
+  if (hasOOD && rolls.length) {
+    hit = rolls.reduce((k, r, i) => k + ((batchFire(0, i) || {}).idx >= 0 ? 1 : 0), 0);
+  }
+  const dimTxt = META.latent ? `${META.latent} 维` : '';
+  el.innerHTML =
+    `<span class="chip">训练 <b>${(META.n || N).toLocaleString()}</b> 帧 / ${META.n_ep || '?'} 集</span>`
+    + (rolls.length ? `<span class="chip">测试 <b>${rolls.length}</b> 局（失败 ${nFail}）</span>` : '')
+    + (hit >= 0 ? `<span class="chip">α=<b>${alpha.toFixed(3)}</b> 检出 <b>${hit}</b>/${nFail}</span>` : '')
+    + (dimTxt ? `<span class="chip">潜变量 <b>${dimTxt}</b> · PC1-3 ${(META.pc_var||[]).join('/')}%</span>` : '')
+    + (META.pSource ? `<span class="chip">判定 <b>${META.pSource}</b></span>` : '')
+    + (META.dimKey ? `<span class="chip">数据 <b>${META.dimKey}</b></span>` : '');
+}
+
+{
+  const sbtn = document.getElementById('sidebtn');
+  if (sbtn) sbtn.onclick = () => {
+    document.getElementById('side').classList.toggle('collapsed');
+    setTimeout(resize, 30);
+  };
+  const hb = document.getElementById('helpbtn');
+  const hlp = document.getElementById('help');
+  if (hb) hb.onclick = () => hlp.classList.add('on');
+  const hc = document.getElementById('helpclose');
+  if (hc) hc.onclick = () => hlp.classList.remove('on');
+  if (hlp) hlp.onclick = e => { if (e.target === hlp) hlp.classList.remove('on'); };
+
+  window.addEventListener('keydown', e => {
+    if (e.target && /input|select|textarea/i.test(e.target.tagName)) return;
+    const hlpEl = document.getElementById('help');
+    if (e.key === 'Escape') { if (hlpEl) hlpEl.classList.remove('on'); return; }
+    if (e.key === 'Tab') { e.preventDefault(); document.getElementById('sidebtn').click(); return; }
+    const vb = (document.getElementById('vB').classList.contains('on') ? VB : VA);
+    if (!vb || !vb.el.src) return;
+    if (e.code === 'Space') { e.preventDefault(); vb.btn.click(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); vb.step(-0.2); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); vb.step(0.2); }
+    else if (e.key === '1' || e.key === '2' || e.key === '3') {
+      const cams = ['head', 'left_wrist', 'right_wrist'];
+      const want = cams[+e.key - 1];
+      const box = (vb === VB) ? document.getElementById('vcamB') : document.getElementById('vcam');
+      const btn = box && box.querySelector(`button[data-cam="${want}"]`);
+      if (btn) btn.click();
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const sel = document.getElementById('evsel');
+      if (!sel || sel.disabled) return;
+      const i = parseInt(sel.value, 10);
+      const n = [...sel.options].length - 1;
+      let j = (isNaN(i) ? 0 : i) + (e.key === 'ArrowDown' ? 1 : -1);
+      j = Math.max(0, Math.min(n, j));
+      sel.value = String(j); sel.onchange();
+    }
+  });
+}
+
+// ---------- 页面启动 / 维数切换 ----------
+function loadDataset(key) {
+  const ds = (window.ROUTEC_DATA || {})[key];
+  if (!ds) { console.warn('数据未加载:', key); return; }
+  if (!applyDataset(ds, ds.meta)) return;
+  META.dimKey = key;
+  VA.dir = META.videoDir || '';
+  VB.dir = META.ev_videoDir || '';
+  document.getElementById('wrap').classList.toggle('onepane', !!META.onePane);
+  ['evgroup', 'oodshowgroup', 'evpane'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = META.onePane ? 'none' : '';
+  });
+  selEpIdx = -1; selEvIdx = -1; batchSel = 0;
+  computeExt(); allocPanes();
+  cmode = META.cmode0 || 'cls';
+  refreshData();
+  autoPlayFirstFire();
+  resize();
+  const note = document.getElementById('dimnote');
+  if (note && META.dimNote) {
+    note.style.display = '';
+    note.innerHTML = `<span>${META.dimNote[0]}</span><b>${META.dimNote[1]}</b>`;
+  }
+}
+
+// 按需注入 <script src>（file:// 下 fetch 会被 CORS 拦，但 script 标签可以）
+function ensureDimScript(key, cb) {
+  if ((window.ROUTEC_DATA || {})[key]) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = (SHELL.dimDir || 'routeC_latents') + '/' + key + '.js';
+  s.onload = () => cb();
+  s.onerror = () => {
+    console.error('加载失败', s.src);
+    const note = document.getElementById('dimnote');
+    if (note) { note.style.display = ''; note.innerHTML = `<span>数据文件缺失</span><b>${key}.js</b>`; }
+  };
+  document.head.appendChild(s);
+}
+
+function bootSingle() {
+  if (!DATA || !DATA.pc) return;
+  if (!applyDataset(DATA)) return;
+  selEpIdx = -1; selEvIdx = -1; batchSel = 0;
+  computeExt(); allocPanes();
+  cmode = META.cmode0 || 'cls';
+  if (META.onePane) document.getElementById('wrap').classList.add('onepane');
+  refreshData(); autoPlayFirstFire(); resize();
+}
+
+function bootDims() {
+  const man = window.ROUTEC_MANIFEST;
+  const box = document.getElementById('dimbox');
+  const sel = document.getElementById('dimsel');
+  if (!man || !man.dims || !man.dims.length || !box || !sel) {   // 无清单：单数据集模式（内嵌数据）
+    bootSingle();
+    return;
+  }
+  box.style.display = '';
+  const byKey = {};
+  (man.dims || []).forEach(d => { byKey[d.key] = d; });
+  const groups = (man.groups && man.groups.length)
+    ? man.groups
+    : [{ label: '', keys: (man.dims || []).map(d => d.key) }];
+  sel.innerHTML = groups.map(g => {
+    const opts = (g.keys || []).filter(k => byKey[k]).map(k => {
+      const d = byKey[k];
+      const lab = d.label ? d.label : `${d.latent} 维`;
+      return `<option value="${d.key}">${lab} · ${d.note || ''}</option>`;
+    }).join('');
+    return (g.label && opts) ? `<optgroup label="${g.label}">${opts}</optgroup>` : opts;
+  }).join('');
+  const pick = man.default || man.dims[0].key;
+  sel.value = pick;
+  sel.onchange = () => {
+    const k = sel.value;
+    ensureDimScript(k, () => {
+      const d = (window.ROUTEC_MANIFEST.dims || []).find(x => x.key === k) || {};
+      const ds = window.ROUTEC_DATA[k];
+      if (ds) ds.meta = Object.assign({}, ds.meta, { dimNote: ['潜空间维数', d.latent + ' 维'] });
+      loadDataset(k);
+    });
+  };
+  ensureDimScript(pick, () => loadDataset(pick));
+}
+
+bootDims();
+
+</script>
+</body>
+</html>

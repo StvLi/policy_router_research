@@ -96,7 +96,14 @@ def train_and_eval(E, EP, T, latent, iters, seed, want_p=False):
     return Z
 
 
-def eval_task(E, EP, T, latent=32, iters=6000, seed=0):
+def pca3(X, n=3):
+    mu = X.mean(0, keepdims=True)
+    _, sv, Vt = np.linalg.svd((X - mu).astype(np.float64), full_matrices=False)
+    var = (sv ** 2) / (sv ** 2).sum()
+    return (X - mu) @ Vt[:n].T, var[:n]
+
+
+def eval_task(E, EP, T, latent=32, iters=6000, seed=0, page_dir=""):
     eps = np.unique(EP)
     rng = np.random.default_rng(seed)
     perm = rng.permutation(len(eps))
@@ -123,6 +130,13 @@ def eval_task(E, EP, T, latent=32, iters=6000, seed=0):
         tail[idx[t >= thr]] = True
     p_tail = p_cal[tail]
 
+    # 页面用：全部帧的 3D 坐标 + 逐帧 p（共形，用同一校准集）
+    if page_dir:
+        P3, var = pca3(Z)
+        p_all = (1.0 + (s_cal[None, :] >= lof_stat(Z, EP, Zf, EPf, dk)[:, None]).sum(1)) / (len(s_cal) + 1.0)
+        np.savez_compressed(os.path.join(page_dir, "demo.page.npz"),
+                            pc3=P3.astype(np.float32), ep=EP, t=T, p=p_all.astype(np.float32),
+                            pc_var=var.astype(np.float32), is_cal=is_cal)
     rec = dict(n_ep=int(len(eps)), n_frames=int(len(E)), n_cal=int(is_cal.sum()),
                latent=latent, iters=iters, seed=seed,
                p50_id=float(np.median(p_cal)),
@@ -150,12 +164,15 @@ def main():
     ap.add_argument("--interval", type=int, default=60)
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--keep", action="store_true", help="保留本地 npz（默认处理后删除）")
+    ap.add_argument("--redo", action="store_true", help="忽略 _state.json，重算已完成的（用于补 page 数据）")
     a = ap.parse_args()
 
     os.makedirs(a.out, exist_ok=True)
     os.makedirs(a.tmp, exist_ok=True)
     state_path = os.path.join(a.out, "_state.json")
-    state = json.load(open(state_path)) if os.path.exists(state_path) else {}
+    state = {} if a.redo else (json.load(open(state_path)) if os.path.exists(state_path) else {})
+    page_dir = os.path.join(a.out, "page")
+    os.makedirs(page_dir, exist_ok=True)
     prev_sizes = {}
 
     print(f"worker 启动：{a.remote}:{a.remote_dir} → {a.out}（每 {a.interval}s 轮询）", flush=True)
@@ -180,7 +197,9 @@ def main():
                 else:
                     fetch(a, task, dst)
                 d = np.load(dst)
-                rec = eval_task(d["E"], d["EP"], d["T"], a.latent, a.iters, a.seed)
+                td = os.path.join(page_dir, task)
+                os.makedirs(td, exist_ok=True)
+                rec = eval_task(d["E"], d["EP"], d["T"], a.latent, a.iters, a.seed, page_dir=td)
                 rec["task"] = task
                 rec["fetch_s"] = round(time.time() - t0, 1)
                 rec["ts"] = time.strftime("%Y-%m-%dT%H:%M:%S")

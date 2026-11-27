@@ -318,3 +318,27 @@ p 中位数 = 0.50（零假设下应均匀），尾部 20% 反而更低（8.6% <
 
 **可缩规模**：`extract_all_tasks.py --episodes-per-task 40` → 约 6 h；对"误报率"的估计精度影响不大
 （每任务仍有 10 集留出、约 1,600 帧），VAE 参考集略小。
+
+### 12.7 多任务浏览页（`assets/flora_task_explorer.html`）
+
+给"按任务看"的页面：顶部 **任务下拉**（35 个任务，随编码进度陆续补齐），单栏视图——只画该任务自己的
+demo 潜空间（32 维 VAE → demo 拟合 PCA 前 3 维，按时间着色），右上角播该任务的演示视频（头部视角、
+320×240 / 12 fps，每任务先带 3 集）。
+
+数据流（不新增模板分支，复用同一套 `ROUTEC_DATA` 机制）：
+
+```
+工作站 pipeline_worker.py --redo
+   → results/page/<task>/demo.page.npz   （pc3 / ep / t / p / pc_var / is_cal）
+   → [本机] build_multitask_page.py
+   → assets/flora_tasks/<task>.js + manifest.js（一档一个任务，optgroup 分组）
+   → assets/flora_task_explorer.html（外壳，META.onePane / selectorLabel="任务"）
+```
+
+- 新增一个任务 = 有新 `demo.page.npz` 后重跑 `build_multitask_page.py`，**不需要改 HTML/JS**；
+- 视频：每任务取前 3 集 `main.mp4` → 本地转码 `320×240 / 12 fps / crf 33`（约 100 KB/集），
+  35 个任务全量约 11 MB，入库；
+- 侧栏在单栏模式下自动隐藏"评测批次/评测栏/OOD 叠点"等评测相关分组。
+
+**踩到的坑（已修）**：播放器的 `dir` 在构造时读取一次，切任务后没更新 → 视频一直 404 并回退 webm；
+现在 `loadDataset` 每次设 `VA.dir = META.videoDir`。

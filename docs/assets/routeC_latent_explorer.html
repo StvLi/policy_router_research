@@ -110,13 +110,14 @@
   #vtime { font-size:10px; color:#7c8698; font-variant-numeric:tabular-nums; display:flex; justify-content:space-between; }
   #vcap .chip { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
   #vbtn { margin-left:auto; width:auto; padding:2px 8px; font-size:11px; }
+  #wrap.onepane #paneB { display:none; }
 </style>
 </head>
 <body>
 <div id="top">
   <div id="tbrand"><b id="ttl"></b><span id="sub"></span></div>
   <div id="dimbox" style="display:none">
-    <span>潜空间维数</span>
+    <span id="dimlabel">潜空间维数</span>
     <select id="dimsel"></select>
   </div>
   <div id="tstats"></div>
@@ -185,7 +186,7 @@
       <label class="row" style="margin-top:6px"><input type="checkbox" id="dim"> 淡化其它点</label>
     </div>
 
-    <div class="grp">
+    <div class="grp" id="evgroup">
       <div class="lbl">评测批次（右）</div>
       <select id="batchsel">
         <option value="0">第一批 · T / T+Vnow（50 集）</option>
@@ -196,12 +197,12 @@
       <select id="evsel"><option value="-1">（不播放）</option></select>
     </div>
 
-    <div class="grp">
+    <div class="grp" id="oodshowgroup">
       <div class="lbl">左栏叠加</div>
       <label class="row"><input type="checkbox" id="oodShow" checked> 显示 OOD 任务点（红）</label>
     </div>
 
-    <div class="grp">
+    <div class="grp" id="evpane">
       <div class="lbl">评测栏（右）</div>
       <label class="row"><input type="checkbox" id="evShow" checked> 显示评测点（白）</label>
       <label class="row"><input type="checkbox" id="evLines" checked> 连成轨迹</label>
@@ -834,12 +835,16 @@ function drawMarkerB() {
 
 function drawDynamic() {
   PA.ctx.drawImage(PA.bgCv, 0, 0);
-  PB.ctx.drawImage(PB.bgCv, 0, 0);
+  if (!META.onePane) PB.ctx.drawImage(PB.bgCv, 0, 0);
   drawMarkerA();
   drawMarkerB();
 }
 
-function draw() { drawStaticA(); drawStaticB(); drawDynamic(); }
+function draw() {
+  drawStaticA();
+  if (!META.onePane) drawStaticB();
+  drawDynamic();
+}
 
 let playReq = null;
 function startLoop() {
@@ -958,6 +963,8 @@ function refreshData() {
   document.getElementById('k_ep').textContent = META.n_ep;
   document.getElementById('k_var').textContent = (META.pc_var || []).join(' / ') + ' %';
 
+  const dl = document.getElementById('dimlabel');
+  if (dl && META.selectorLabel) dl.textContent = META.selectorLabel;
   const s = document.getElementById('cmode');
   ['cls', 'ang'].forEach(v => {
     const has = (v !== 'cls') || !META.no_cls;
@@ -998,7 +1005,9 @@ function refreshData() {
   if (!N2) { batchSel = 0; batchSelEl0.value = '0'; }
 
   epSel.innerHTML = '<option value="-1">（不显示轨迹）</option>';
+  const onlyVid = META.videoEpisodes;
   (META.ep_names || []).forEach((name, i) => {
+    if (onlyVid && onlyVid.indexOf(i) < 0) return;
     const o = document.createElement('option');
     o.value = i; o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)`;
     epSel.appendChild(o);
@@ -1302,7 +1311,7 @@ function updateStats() {
   const dimTxt = META.latent ? `${META.latent} 维` : '';
   el.innerHTML =
     `<span class="chip">训练 <b>${(META.n || N).toLocaleString()}</b> 帧 / ${META.n_ep || '?'} 集</span>`
-    + `<span class="chip">测试 <b>${rolls.length}</b> 局（失败 ${nFail}）</span>`
+    + (rolls.length ? `<span class="chip">测试 <b>${rolls.length}</b> 局（失败 ${nFail}）</span>` : '')
     + (hit >= 0 ? `<span class="chip">α=<b>${alpha.toFixed(3)}</b> 检出 <b>${hit}</b>/${nFail}</span>` : '')
     + (dimTxt ? `<span class="chip">潜变量 <b>${dimTxt}</b> · PC1-3 ${(META.pc_var||[]).join('/')}%</span>` : '')
     + (META.pSource ? `<span class="chip">判定 <b>${META.pSource}</b></span>` : '')
@@ -1357,6 +1366,13 @@ function loadDataset(key) {
   if (!ds) { console.warn('数据未加载:', key); return; }
   if (!applyDataset(ds, ds.meta)) return;
   META.dimKey = key;
+  VA.dir = META.videoDir || '';
+  VB.dir = META.ev_videoDir || '';
+  document.getElementById('wrap').classList.toggle('onepane', !!META.onePane);
+  ['evgroup', 'oodshowgroup', 'evpane'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = META.onePane ? 'none' : '';
+  });
   selEpIdx = -1; selEvIdx = -1; batchSel = 0;
   computeExt(); allocPanes();
   cmode = META.cmode0 || 'cls';
@@ -1390,6 +1406,7 @@ function bootSingle() {
   selEpIdx = -1; selEvIdx = -1; batchSel = 0;
   computeExt(); allocPanes();
   cmode = META.cmode0 || 'cls';
+  if (META.onePane) document.getElementById('wrap').classList.add('onepane');
   refreshData(); autoPlayFirstFire(); resize();
 }
 
@@ -1410,7 +1427,8 @@ function bootDims() {
   sel.innerHTML = groups.map(g => {
     const opts = (g.keys || []).filter(k => byKey[k]).map(k => {
       const d = byKey[k];
-      return `<option value="${d.key}">${d.latent} 维 · ${d.note || ''}</option>`;
+      const lab = d.label ? d.label : `${d.latent} 维`;
+      return `<option value="${d.key}">${lab} · ${d.note || ''}</option>`;
     }).join('');
     return (g.label && opts) ? `<optgroup label="${g.label}">${opts}</optgroup>` : opts;
   }).join('');
