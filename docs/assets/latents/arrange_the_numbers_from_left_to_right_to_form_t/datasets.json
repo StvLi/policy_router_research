@@ -1,0 +1,23 @@
+{
+ "key": "arrange_the_numbers_from_left_to_right_to_form_t",
+ "label": "Arrange the numbers from left to right to form the largest possible number, and place them on the pad.",
+ "videoDir": "videos/flora/arrange_the_numbers_from_left_to_right_to_form_t",
+ "evVideoDir": "",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/arrange_the_numbers_from_left_to_right_to_form_t/lof-d32.js",
+   "latent": 32,
+   "n_tr": 11708,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    11.84,
+    9.25,
+    8.83
+   ],
+   "note": "100 集 · 11,708 帧 · 视频 3 集"
+  }
+ ]
+}

@@ -42,7 +42,7 @@ def parse_js(path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--handover-src", default="data/routeC_latents")
-    ap.add_argument("--out", default="docs/assets/routeC_latents")
+    ap.add_argument("--out", default="docs/assets/latents/store_laptop_and_headphones")
     ap.add_argument("--stats", default="lof,progress,global")
     ap.add_argument("--global-dims", default="32")
     ap.add_argument("--with-mse", action="store_true")

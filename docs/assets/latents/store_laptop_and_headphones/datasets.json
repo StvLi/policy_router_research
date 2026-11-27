@@ -1,0 +1,143 @@
+{
+ "key": "store_laptop_and_headphones",
+ "label": "收纳耳机与笔记本电脑（单任务 · 含 25 局评测）",
+ "videoDir": "videos/head",
+ "evVideoDir": "videos/eval25",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "共形 p · 局部密度归一化（LOF，无进度）★",
+   "file": "latents/store_laptop_and_headphones/lof-d32.js",
+   "latent": 32,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    9.17,
+    8.9,
+    7.54
+   ],
+   "note": "100 集 demo · α=0.12 检出 23/24 · 3D≈26% · p=局部密度kNN"
+  },
+  {
+   "key": "lof-d16",
+   "group": "共形 p · 局部密度归一化（LOF，无进度）★",
+   "file": "latents/store_laptop_and_headphones/lof-d16.js",
+   "latent": 16,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    11.68,
+    10.82,
+    9.14
+   ],
+   "note": "100 集 demo · α=0.12 检出 23/24 · 3D≈32% · p=局部密度kNN"
+  },
+  {
+   "key": "lof-d8",
+   "group": "共形 p · 局部密度归一化（LOF，无进度）★",
+   "file": "latents/store_laptop_and_headphones/lof-d8.js",
+   "latent": 8,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    18.55,
+    15.17,
+    13.8
+   ],
+   "note": "100 集 demo · α=0.12 检出 23/24 · 3D≈48% · p=局部密度kNN"
+  },
+  {
+   "key": "lof-d4",
+   "group": "共形 p · 局部密度归一化（LOF，无进度）★",
+   "file": "latents/store_laptop_and_headphones/lof-d4.js",
+   "latent": 4,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    31.64,
+    28.46,
+    22.03
+   ],
+   "note": "100 集 demo · α=0.12 检出 24/24 · 3D≈82% · p=局部密度kNN"
+  },
+  {
+   "key": "prog-d32",
+   "group": "共形 p · 进度条件 kNN（需要进度 u）",
+   "file": "latents/store_laptop_and_headphones/prog-d32.js",
+   "latent": 32,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    9.17,
+    8.9,
+    7.54
+   ],
+   "note": "100 集 demo · α=0.12 检出 24/24 · 3D≈26% · p=进度条件kNN"
+  },
+  {
+   "key": "prog-d16",
+   "group": "共形 p · 进度条件 kNN（需要进度 u）",
+   "file": "latents/store_laptop_and_headphones/prog-d16.js",
+   "latent": 16,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    11.68,
+    10.82,
+    9.14
+   ],
+   "note": "100 集 demo · α=0.12 检出 24/24 · 3D≈32% · p=进度条件kNN"
+  },
+  {
+   "key": "prog-d8",
+   "group": "共形 p · 进度条件 kNN（需要进度 u）",
+   "file": "latents/store_laptop_and_headphones/prog-d8.js",
+   "latent": 8,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    18.55,
+    15.17,
+    13.8
+   ],
+   "note": "100 集 demo · α=0.12 检出 24/24 · 3D≈48% · p=进度条件kNN"
+  },
+  {
+   "key": "prog-d4",
+   "group": "共形 p · 进度条件 kNN（需要进度 u）",
+   "file": "latents/store_laptop_and_headphones/prog-d4.js",
+   "latent": 4,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    31.64,
+    28.46,
+    22.03
+   ],
+   "note": "100 集 demo · α=0.12 检出 24/24 · 3D≈82% · p=进度条件kNN"
+  },
+  {
+   "key": "glob-d32",
+   "group": "共形 p · 全局 kNN（无 u 的朴素对照）",
+   "file": "latents/store_laptop_and_headphones/glob-d32.js",
+   "latent": 32,
+   "n_tr": 10590,
+   "n_ev": 3951,
+   "n_ep": 100,
+   "pc_var": [
+    9.17,
+    8.9,
+    7.54
+   ],
+   "note": "100 集 demo · α=0.12 检出 8/24 · 3D≈26% · p=全局kNN"
+  }
+ ]
+}

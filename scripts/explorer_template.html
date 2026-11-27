@@ -117,6 +117,8 @@
 <div id="top">
   <div id="tbrand"><b id="ttl"></b><span id="sub"></span></div>
   <div id="dimbox" style="display:none">
+    <span id="tasklabel">任务</span>
+    <select id="tasksel" style="min-width:260px"></select>
     <span id="dimlabel">潜空间维数</span>
     <select id="dimsel"></select>
   </div>
@@ -1361,10 +1363,10 @@ function updateStats() {
 }
 
 // ---------- 页面启动 / 维数切换 ----------
-function loadDataset(key) {
+function loadDataset(key, metaOverride) {
   const ds = (window.ROUTEC_DATA || {})[key];
   if (!ds) { console.warn('数据未加载:', key); return; }
-  if (!applyDataset(ds, ds.meta)) return;
+  if (!applyDataset(ds, Object.assign({}, ds.meta, metaOverride || {}))) return;
   META.dimKey = key;
   VA.dir = META.videoDir || '';
   VB.dir = META.ev_videoDir || '';
@@ -1387,10 +1389,10 @@ function loadDataset(key) {
 }
 
 // 按需注入 <script src>（file:// 下 fetch 会被 CORS 拦，但 script 标签可以）
-function ensureDimScript(key, cb) {
+function ensureDimScript(key, cb, file) {
   if ((window.ROUTEC_DATA || {})[key]) { cb(); return; }
   const s = document.createElement('script');
-  s.src = (SHELL.dimDir || 'routeC_latents') + '/' + key + '.js';
+  s.src = file || ((SHELL.dimDir || 'routeC_latents') + '/' + key + '.js');
   s.onload = () => cb();
   s.onerror = () => {
     console.error('加载失败', s.src);
@@ -1410,10 +1412,84 @@ function bootSingle() {
   refreshData(); autoPlayFirstFire(); resize();
 }
 
+let TASKS = [], CUR_TASK = null, CUR_DS = null;
+
+function taskByKey(k) { return TASKS.find(t => t.key === k); }
+function dsByKey(task, k) { return ((task && task.datasets) || []).find(d => d.key === k); }
+
+// 一个任务的数据集下拉（按 group 分组）
+function fillDatasetSel(task) {
+  const sel = document.getElementById('dimsel');
+  const groups = [];
+  (task.datasets || []).forEach(d => {
+    const g = d.group || '默认';
+    let hit = groups.find(x => x.label === g);
+    if (!hit) { hit = { label: g, items: [] }; groups.push(hit); }
+    hit.items.push(d);
+  });
+  sel.innerHTML = groups.map(g => {
+    const opts = g.items.map(d => {
+      const lab = d.latent ? `${d.latent} 维` : d.key;
+      return `<option value="${d.key}">${lab} · ${d.note || ''}</option>`;
+    }).join('');
+    return (g.label && groups.length > 1) ? `<optgroup label="${g.label}">${opts}</optgroup>` : opts;
+  }).join('');
+  const dl = document.getElementById('dimlabel');
+  if (dl) dl.textContent = (task.datasets || []).length > 1 ? '数据集' : '数据集';
+}
+
+// 加载某任务下的某数据集
+function pickTaskDs(taskKey, dsKey) {
+  const task = taskByKey(taskKey);
+  if (!task) return;
+  const ds = dsByKey(task, dsKey) || (task.datasets || [])[0];
+  if (!ds) return;
+  CUR_TASK = task; CUR_DS = ds;
+  const full = taskKey + '@' + ds.key;
+  const override = {
+    videoDir: task.videoDir || '',
+    ev_videoDir: task.evVideoDir || '',
+    eval25VideoDir: task.evVideoDir || '',
+    onePane: !task.evVideoDir,
+    selectorLabel: '数据集',
+    dimNote: ['潜空间维数', (ds.latent || 32) + ' 维'],
+  };
+  ensureDimScript(full, () => {
+    // 数据文件按"局部 key"注册（如 lof-d32），这里补一个任务命名空间的别名
+    const RD = window.ROUTEC_DATA || {};
+    if (!RD[full] && RD[ds.key]) RD[full] = RD[ds.key];
+    loadDataset(full, override);
+  }, ds.file);
+}
+
 function bootDims() {
   const man = window.ROUTEC_MANIFEST;
   const box = document.getElementById('dimbox');
   const sel = document.getElementById('dimsel');
+  const tsel = document.getElementById('tasksel');
+
+  // v2：tasks → datasets
+  if (man && man.tasks && man.tasks.length && box && sel && tsel) {
+    TASKS = man.tasks;
+    box.style.display = '';
+    tsel.innerHTML = TASKS.map(t => `<option value="${t.key}">${t.label || t.key}</option>`).join('');
+    const dflt = man.default || { task: TASKS[0].key, dataset: TASKS[0].datasets[0].key };
+    tsel.value = dflt.task;
+    const t0 = taskByKey(dflt.task) || TASKS[0];
+    fillDatasetSel(t0);
+    sel.value = dflt.dataset;
+    tsel.onchange = () => {
+      const t = taskByKey(tsel.value);
+      if (!t) return;
+      fillDatasetSel(t);
+      sel.value = (t.datasets[0] || {}).key;
+      pickTaskDs(t.key, sel.value);
+    };
+    sel.onchange = () => pickTaskDs(tsel.value, sel.value);
+    pickTaskDs(dflt.task, dflt.dataset);
+    return;
+  }
+
   if (!man || !man.dims || !man.dims.length || !box || !sel) {   // 无清单：单数据集模式（内嵌数据）
     bootSingle();
     return;

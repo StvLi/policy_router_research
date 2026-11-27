@@ -40,7 +40,7 @@ def main():
     ap.add_argument("--pages", default="/tmp/pages")
     ap.add_argument("--manifest", default="/tmp/manifest.csv")
     ap.add_argument("--videos", default="docs/assets/videos/flora")
-    ap.add_argument("--out", default="docs/assets/flora_tasks")
+    ap.add_argument("--out", default="docs/assets/latents")
     ap.add_argument("--html", default="docs/assets/flora_task_explorer.html")
     a = ap.parse_args()
 
