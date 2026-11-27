@@ -55,7 +55,7 @@ def list_remote(a):
     res = {}
     for line in out.splitlines():
         parts = line.split()
-        if len(parts) < 9:
+        if len(parts) < 7:
             continue
         size, mtime, path = parts[4], parts[5], parts[-1]
         task = os.path.basename(os.path.dirname(path))
@@ -176,9 +176,7 @@ def main():
             try:
                 if a.src_dir:
                     src = os.path.join(a.src_dir, f"{task}.npz")
-                    os.link(src, dst) if os.path.exists(dst) is False else None
-                    if not os.path.exists(dst):
-                        os.replace(src, dst)          # 直接从收件箱取走
+                    os.replace(src, dst)              # 从收件箱移走，避免重复占空间
                 else:
                     fetch(a, task, dst)
                 d = np.load(dst)
