@@ -246,3 +246,38 @@ L1 通过后再挑 5 个任务补 L2。
 
 **需要你提供**：① 6 卡机器地址（或确认用现有 4 卡）；② 35 任务数据的可读路径（或 HF repo id + 允许下载）；
 ③ 哪些任务已有评测 rollout（决定 L2 的范围）。
+
+### 12.5 补充：6 卡机与全量数据已定位（2026-11-27）
+
+之前 §12.1/§12.2 的"没找到 6 卡机、没有 35 任务数据"作废——按用户给的入口 `ssh -p 32375 dev@10.30.13.100`
+找到了另一台**容器化**开发机：
+
+| 项 | 实测 |
+|---|---|
+| 机器 | 容器（hostname `di-dbqvpujhq4us73eg5o10-…`），6 × RTX PRO 6000 / 98 GB，磁盘 974 GB 可用 |
+| GPU0–3 | **被一个仍在跑的训练任务占用**（`train_pi05_totaltask_4gpu.py`，step 24.3k，`metrics.jsonl` 仍在写）→ 不动它 |
+| GPU4–5 | 空闲 → 本次抽取在用 |
+| 数据 | `/hdfs/users/peize/vlm_vla/flora/clips/epNNNNNN/{main,left_wrist,right_wrist}.mp4`，**3,500 集 = 35 任务 × 100**，13 GB |
+| 任务映射 | `RoboDojo35Flora_labels.tar.gz` 里的 `manifest.csv`：`episode_id,task,duration_s,n_segments,…`（35 个任务、每任务 100 集，已核对） |
+| 检查点 | `ckpt/RoboDojo35FloraU_train_20261117_032827/30000`（含 `assets/arx_x5_sim`） |
+| 环境 | `/root/openpi/.venv`：torch 2.8.0+cu128（6 卡可见）、JAX pi05 可用 |
+
+**吞吐实测**：stride 5、三视角、batch 8 → **~14 s/集**（含一次性编译；ws 上是 50 s/集）。
+3,500 集 ≈ **13.6 GPU·h**；当前 2 卡并行 ≈ **7 h**，若 GPU0–3 空出来可压到 ~2.5 h。
+
+**已就位的脚本**
+
+```bash
+# 抽取（每卡一个 shard，任务按序号轮转；断点续跑）
+CUDA_VISIBLE_DEVICES=4 python3 extract_all_tasks.py --shard 0 --nshard 2
+CUDA_VISIBLE_DEVICES=5 python3 extract_all_tasks.py --shard 1 --nshard 2
+#   → /root/rtc/latent/<task_slug>/demo.npz （E 2048 维 / EP / T）
+
+# L1 逐任务验证：每任务一个 VAE + LOF 共形 p，ID=留出集，OOD=其它任务抽样
+python3 multitask_ood.py --dims 32 --iters 6000
+#   → /root/rtc/results/<task>.json  {auroc, fpr, tpr, med_p_id, med_p_ood}
+```
+
+**L1 的判定口径**（待确认）：每任务 VAE 只看过自己的 100 集；
+ID = 该任务留出集（应被判正常）、OOD = 其它任务帧经**本任务 VAE**编码（应被判异常）。
+"适用面"= 35 个任务里满足 `FPR ≤ 5% 且 TPR ≥ 80%`（或 AUROC ≥ 0.9）的比例。
