@@ -281,3 +281,28 @@ python3 multitask_ood.py --dims 32 --iters 6000
 **L1 的判定口径**（待确认）：每任务 VAE 只看过自己的 100 集；
 ID = 该任务留出集（应被判正常）、OOD = 其它任务帧经**本任务 VAE**编码（应被判异常）。
 "适用面"= 35 个任务里满足 `FPR ≤ 5% 且 TPR ≥ 80%`（或 AUROC ≥ 0.9）的比例。
+
+### 12.6 流水线（已跑起来）：6 卡机编码 → 单卡工作站训练/测试
+
+```
+[6 卡机 GPU4-5]  extract_all_tasks.py --shard {0,1} --nshard 2
+        │  每任务 100 集 → /root/rtc/latent/<task>/demo.npz（E 2048 / EP / T）
+        │  ⚠ 这台机器与本机可达、与工作站不可达（不同网段）
+        ▼
+[本机]  feeder：轮询远端 ls，文件大小稳定后 scp 到工作站 ~/e2rc/in/<task>.npz
+        ▼
+[单卡工作站 /home/admin/e2rc]  pipeline_worker.py --src-dir ~/e2rc/in --out ~/e2rc/results
+        │  消费：训该任务 VAE（d=32, 6k iters）→ LOF 统计量 → 共形 p → 指标
+        ▼
+   results/<task>.json {fpr_ep@α, fpr_tail@α, p50_id, p50_tail, …} + _state.json（断点续跑）
+```
+
+**指标只用该任务自己的 100 集**（按用户要求，不掺其它任务）：
+`fpr_ep` = 留出集（25% 的集）误报率；`fpr_tail` = 留出集**每集尾部 20%** 的误报率
+（专门检查"参考集有没有覆盖后段"这个无进度条件下的坑）；另有 α 扫描与 p 中位数。
+
+**产能实测**：编码 ≈ **27 CPU-s/集**（≈30 s 墙钟，两进程共享 CPU/GPU）→ 单 shard 一个任务约
+**45 min**，全量 3,500 集 ≈ **15 h**（2 shard 并行）。消费端每个任务只要 1–2 min，**不是瓶颈**。
+
+**可缩规模**：`extract_all_tasks.py --episodes-per-task 40` → 约 6 h；对"误报率"的估计精度影响不大
+（每任务仍有 10 集留出、约 1,600 帧），VAE 参考集略小。
