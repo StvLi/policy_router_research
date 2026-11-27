@@ -150,8 +150,10 @@ def main():
                 title=f"「{task}」· 该任务独立 VAE（32 维潜变量）→ demo 拟合 PCA 前 3 维",
                 pageTitle="Flora · 潜空间浏览器",
                 paneATitle=(f"<b>拟合集（参考）</b> · {len(ids_fit):,} 帧 / {len(eps_fit)} 集 · 按阶段着色"),
-                paneBTitle=(f"<b>留出集（检测器没见过）</b> · {len(ids_cal):,} 帧 / {len(eps_cal)} 集 · "
-                            "<span style='color:#ff7a18'>橙星=OOD 触发帧</span>"),
+                paneBTitle=(f"<b>留出集 · {len(eps_cal)} 集</b> · {len(ids_cal):,} 帧 · "
+                            "同任务同分布、未参与拟合（形状理应相似）· "
+                            "<span style='color:#c0392b'>颜色=p</span> "
+                            "<span style='color:#ff7a18'>橙星=触发帧</span>"),
                 n=int(len(ids_fit)), n_ep=int(len(eps_fit)),
                 ep_names=[f"ep{int(e):06d}" for e in eps_fit],
                 pc_var=[round(float(v) * 100, 2) for v in z["pc_var"]],
@@ -167,7 +169,7 @@ def main():
                 videoDir=f"videos/flora/{key}", ev_videoDir=f"videos/flora/{key}",
                 videoEpisodes=[i for i, n in
                                enumerate([f"ep{int(e):06d}" for e in eps_fit]) if n in vids],
-                onePane=False,
+                onePane=False, evColorByP=True,
             ),
             pc=b64(pc3[ids_fit], np.float32),
             cls=b64(cls[ids_fit], np.uint8),

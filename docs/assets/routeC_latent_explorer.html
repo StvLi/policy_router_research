@@ -727,8 +727,13 @@ function drawStaticB() {
         if (okOnly && !B.ok[i]) continue;
         const s = base * B.ssz[i] * DPR;
         const rr = B.ep[i];
-        g.fillStyle = pal ? PAL[rr % PAL.length] : B.tint;
-        g.globalAlpha = pal ? 0.62 : ((b === 1) ? 0.45 : 0.38);
+        if (META.evColorByP && EVP && b === batchSel) {
+          g.fillStyle = (EVP[i] < alpha) ? '#e74c3c' : '#7fb3d5';  // 红=当帧被判异常
+          g.globalAlpha = 0.8;
+        } else {
+          g.fillStyle = pal ? PAL[rr % PAL.length] : B.tint;
+          g.globalAlpha = pal ? 0.62 : ((b === 1) ? 0.45 : 0.38);
+        }
         g.fillRect(B.sx[i] - s/2, B.sy[i] - s/2, s, s);
       }
       g.globalAlpha = 1;
