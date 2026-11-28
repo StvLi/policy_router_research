@@ -438,3 +438,20 @@ Vulkan/EGL）；② `kmctl` 登录上下文缺失。要继续必须拿到平台�
 **这是页面右栏"真实轨迹"的正确数据源**：36 个任务 × 25 局，含成功/失败。
 正在做：把这 900 条 rollout 用 π0 重新编码（stride 5、三视角），预计 **~10 h**（每任务约 17 min），
 产物 `/home/admin/e2rc/rollouts/<task>.npz`；之后用各任务自己的 VAE 投影 → 逐帧共形 p → 右栏轨迹与判定。
+
+### 12.13 用各任务自己的 VAE 投影全部 36 任务的 rollout（进行中）
+
+流程（都在单卡工作站）：
+
+```
+extract_rollouts.py   每个任务取最新一次 run（25 局 × 3 视角）→ π0 表征 → rollouts/<task>.npz
+project_rollouts.py   --watch：发现新 npz → 重训该任务的 VAE（与 worker 同 seed/iters，确定性）
+                      → demo 帧拟合 PCA 基 → rollout 帧编码 → LOF 统计量（参考集=拟合集）
+                      → 共形 p（校准集=demo 的 25%）→ results/page/<task>/eval.npz
+build_task_datasets.py → 页面右栏 = 真实 25 条轨迹（含成功/失败）+ OOD 触发标记
+```
+
+- **采样改 stride 10**（0.4 s）：rollout 视频 967 帧（38.7 s），stride 5 时单任务 ~21 min、
+  全量 ~13 h；改 10 后 ~6 h。代价：窗规则里的"5 帧"从 1 s 变 2 s，写报告时要说清。
+- 判定与视频无关：p 来自 (demo 派生 VAE, LOF, 共形)，与采样率无关，只有"窗口时长"的解释变了。
+- 完成后页面右栏就是 §图 1 的形态（真实轨迹 + 触发星 + 每局成败），且**逐任务用自己的 VAE**。
