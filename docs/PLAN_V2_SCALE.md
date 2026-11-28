@@ -403,3 +403,22 @@ p 值中位数 = 0.500（理论值）。**结论：逐任务 VAE + LOF 共形校
 
 **仍未验证的一半**：这 35 个任务只有**成功演示**，右侧"真实 rollout"只有 store_laptop（25 局）
 与可用的 stack_bowls（63 条视频，待编码）。**失败检出率仍需逐任务评测数据**（§5.2/§12.1）。
+
+### 12.11 追查"全任务 VLA 评测记录"：**没跑成**，卡在基础设施
+
+在能访问到的四台工作站 + 6 卡机 HDFS 上穷举过 `eval_result/`、`platform_runs/`、`_result.json`、
+以及按任务名（stack_bowls / arrange_numbers …）搜索，结论：
+
+| 位置 | 内容 | 能否用 |
+|---|---|---|
+| `6c: runs/eval_jobs/README.md` | 评测方案（54 配置 / 35 任务 / 8 卡）**与阻塞记录**：*"本容器无法跑 RoboDojo 仿真，成功率必须走平台作业（kmctl）；当前阻塞点：`kmctl` 没有登录上下文"*、apt 无外网、无 X 显示 | **方案在，结果没跑出来** |
+| `6c: runs/eval_jobs/local_runs/step1000_cover_blocks_seed0/` | 唯一的本地尝试（单任务 `cover_blocks`）：`server.log` 显示策略服务起来了（`ws://127.0.0.1:24800`），但**没有 `_result.json`、没有 mp4** | 仿真没起来 |
+| `6c: runs/eval_jobs/pi05unified_ckpt1000_smoke_v1/shard_00/` | 只有分片骨架（deploy.yml / manifest / serve.py） | 未运行 |
+| `ws: eval_result/RoboDojo/stack_bowls{,/_random}` | **真实的** RoboDojo 评测结果：2,082 个 mp4 + 每 run 的 `_result.json`（多个 ckpt） | ✅ 可用 |
+| `data/eval25` | store_laptop 25 局（1 成功 / 24 失败） | ✅ 已在页面 |
+
+**结论**：35 任务全量评测**没有跑成**，卡在两处：① 需要平台容器（`NVIDIA_DRIVER_CAPABILITIES=…graphics`、
+Vulkan/EGL）；② `kmctl` 登录上下文缺失。要继续必须拿到平台账号/JWT，或在有图形能力的容器里跑。
+
+**当前能做的**：把 `stack_bowls` 的 63 条 rollout 编码进它自己的 VAE，作为第二个"左右都是真数据"的示例；
+其余 33 个任务的失败检出率，必须等评测打通。
