@@ -422,3 +422,19 @@ Vulkan/EGL）；② `kmctl` 登录上下文缺失。要继续必须拿到平台�
 
 **当前能做的**：把 `stack_bowls` 的 63 条 rollout 编码进它自己的 VAE，作为第二个"左右都是真数据"的示例；
 其余 33 个任务的失败检出率，必须等评测打通。
+
+### 12.12 ✅ 找到了：全任务 VLA 评测记录在单卡工作站的 `~/rdojo_ws`（11-20 跑的）
+
+之前查 `~/tmp_ws/robodojo/RoboDojo/eval_result`（只有 stack_bowls）漏掉了真正的评测树——
+它在 **`/home/syt/rdojo_ws/eval_result/RoboDojo/`**（`pro6000_notes/EXPERIMENT_LOG.md` §5 也写了这个路径）：
+
+| 项 | 事实 |
+|---|---|
+| 规模 | **23 GB**，**36 个任务目录**，每个 25 局 × 3 视角（**75 个 mp4**）+ `_result.json` |
+| 格式 | `episode_<7d>_cam_{head,left_wrist,right_wrist}_{success,fail}.mp4`；`_result.json` 含 `success_rate`/`eval_time=25` |
+| 策略 | `Pi_05/arx_x5/0_*ckpt_name=floraU30k-T-<task>…`——**与我们抽取演示表征用的是同一族 ckpt（floraU 30k T 臂）** |
+| 成功率范围 | 0%–76%（stack_bowls=1.0 是 1 局快速验证，不算） |
+
+**这是页面右栏"真实轨迹"的正确数据源**：36 个任务 × 25 局，含成功/失败。
+正在做：把这 900 条 rollout 用 π0 重新编码（stride 5、三视角），预计 **~10 h**（每任务约 17 min），
+产物 `/home/admin/e2rc/rollouts/<task>.npz`；之后用各任务自己的 VAE 投影 → 逐帧共形 p → 右栏轨迹与判定。
