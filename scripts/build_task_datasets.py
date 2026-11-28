@@ -106,7 +106,8 @@ def main():
         eps_fit = np.unique(ep[ids_fit])
 
         # 右栏 = 该任务的**真实 VLA rollout**（若已编码：<pages>/<task>.eval.npz）
-        evf = os.path.join(a.pages, f"{key}.eval.npz")
+        cand = [os.path.join(a.pages, key, "eval.npz"), os.path.join(a.pages, f"{key}.eval.npz")]
+        evf = next((p for p in cand if os.path.exists(p)), cand[0])
         has_ev = os.path.exists(evf)
         if has_ev:
             zz = np.load(evf)

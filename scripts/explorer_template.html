@@ -1012,11 +1012,11 @@ function refreshData() {
   if (!N2) { batchSel = 0; batchSelEl0.value = '0'; }
 
   epSel.innerHTML = '<option value="-1">（不显示轨迹）</option>';
-  const onlyVid = META.videoEpisodes;
+  const withVid = new Set(META.videoEpisodes || []);
   (META.ep_names || []).forEach((name, i) => {
-    if (onlyVid && onlyVid.indexOf(i) < 0) return;
     const o = document.createElement('option');
-    o.value = i; o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)`;
+    o.value = i;
+    o.textContent = `${name}  (${OFF[i+1] - OFF[i]} 帧)` + (withVid.has(i) ? '  ▶' : '');
     epSel.appendChild(o);
   });
   epSel.value = '-1';
@@ -1384,9 +1384,10 @@ function loadDataset(key, metaOverride) {
   VA.dir = META.videoDir || '';
   VB.dir = META.ev_videoDir || '';
   document.getElementById('wrap').classList.toggle('onepane', !!META.onePane);
+  const hideEval = META.onePane || !META.ev_n;
   ['evgroup', 'oodshowgroup', 'evpane'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.style.display = META.onePane ? 'none' : '';
+    if (el) el.style.display = hideEval ? 'none' : '';
   });
   selEpIdx = -1; selEvIdx = -1; batchSel = 0;
   computeExt(); allocPanes();
