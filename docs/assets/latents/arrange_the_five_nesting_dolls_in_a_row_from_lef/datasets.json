@@ -1,0 +1,23 @@
+{
+ "key": "arrange_the_five_nesting_dolls_in_a_row_from_lef",
+ "label": "Arrange the five nesting dolls in a row from…",
+ "videoDir": "videos/flora/arrange_the_five_nesting_dolls_in_a_row_from_lef",
+ "evVideoDir": "videos/flora/arrange_the_five_nesting_dolls_in_a_row_from_lef",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/arrange_the_five_nesting_dolls_in_a_row_from_lef/lof-d32.js",
+   "latent": 32,
+   "n_tr": 11843,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    11.1,
+    10.13,
+    9.52
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "key": "insert_the_three_tubes_into_the_rack_one_by_one",
+ "label": "Insert the three tubes into the rack one by …",
+ "videoDir": "videos/flora/insert_the_three_tubes_into_the_rack_one_by_one",
+ "evVideoDir": "videos/flora/insert_the_three_tubes_into_the_rack_one_by_one",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/insert_the_three_tubes_into_the_rack_one_by_one/lof-d32.js",
+   "latent": 32,
+   "n_tr": 6487,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    12.51,
+    10.64,
+    8.85
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

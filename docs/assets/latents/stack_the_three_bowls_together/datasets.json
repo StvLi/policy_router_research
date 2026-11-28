@@ -1,0 +1,23 @@
+{
+ "key": "stack_the_three_bowls_together",
+ "label": "Stack the three bowls together.",
+ "videoDir": "videos/flora/stack_the_three_bowls_together",
+ "evVideoDir": "videos/flora/stack_the_three_bowls_together",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/stack_the_three_bowls_together/lof-d32.js",
+   "latent": 32,
+   "n_tr": 9010,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    11.14,
+    8.8,
+    7.99
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

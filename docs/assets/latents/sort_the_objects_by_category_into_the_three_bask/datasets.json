@@ -1,0 +1,23 @@
+{
+ "key": "sort_the_objects_by_category_into_the_three_bask",
+ "label": "Sort the objects by category into the three …",
+ "videoDir": "videos/flora/sort_the_objects_by_category_into_the_three_bask",
+ "evVideoDir": "videos/flora/sort_the_objects_by_category_into_the_three_bask",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/sort_the_objects_by_category_into_the_three_bask/lof-d32.js",
+   "latent": 32,
+   "n_tr": 13992,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    12.16,
+    10.63,
+    10.15
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

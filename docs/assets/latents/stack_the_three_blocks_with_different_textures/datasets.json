@@ -1,0 +1,23 @@
+{
+ "key": "stack_the_three_blocks_with_different_textures",
+ "label": "Stack the three blocks with different textur…",
+ "videoDir": "videos/flora/stack_the_three_blocks_with_different_textures",
+ "evVideoDir": "videos/flora/stack_the_three_blocks_with_different_textures",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/stack_the_three_blocks_with_different_textures/lof-d32.js",
+   "latent": 32,
+   "n_tr": 5352,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    11.48,
+    10.97,
+    8.61
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

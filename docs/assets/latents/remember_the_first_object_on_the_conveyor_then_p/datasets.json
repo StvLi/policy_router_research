@@ -1,0 +1,23 @@
+{
+ "key": "remember_the_first_object_on_the_conveyor_then_p",
+ "label": "Remember the first object on the conveyor, t…",
+ "videoDir": "videos/flora/remember_the_first_object_on_the_conveyor_then_p",
+ "evVideoDir": "videos/flora/remember_the_first_object_on_the_conveyor_then_p",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/remember_the_first_object_on_the_conveyor_then_p/lof-d32.js",
+   "latent": 32,
+   "n_tr": 8710,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    14.27,
+    11.66,
+    7.73
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

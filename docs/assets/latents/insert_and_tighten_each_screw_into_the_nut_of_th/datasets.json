@@ -1,0 +1,23 @@
+{
+ "key": "insert_and_tighten_each_screw_into_the_nut_of_th",
+ "label": "Insert and tighten each screw into the nut o…",
+ "videoDir": "videos/flora/insert_and_tighten_each_screw_into_the_nut_of_th",
+ "evVideoDir": "videos/flora/insert_and_tighten_each_screw_into_the_nut_of_th",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/insert_and_tighten_each_screw_into_the_nut_of_th/lof-d32.js",
+   "latent": 32,
+   "n_tr": 27845,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    15.18,
+    10.69,
+    9.67
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

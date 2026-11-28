@@ -1,0 +1,23 @@
+{
+ "key": "pick_up_the_broom_hand_it_over_to_the_right_hand",
+ "label": "Pick up the broom, hand it over to the right…",
+ "videoDir": "videos/flora/pick_up_the_broom_hand_it_over_to_the_right_hand",
+ "evVideoDir": "videos/flora/pick_up_the_broom_hand_it_over_to_the_right_hand",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/pick_up_the_broom_hand_it_over_to_the_right_hand/lof-d32.js",
+   "latent": 32,
+   "n_tr": 12194,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    11.69,
+    8.9,
+    8.47
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

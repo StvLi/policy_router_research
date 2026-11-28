@@ -1,0 +1,23 @@
+{
+ "key": "plug_the_charger_into_the_power_strip",
+ "label": "Plug the charger into the power strip.",
+ "videoDir": "videos/flora/plug_the_charger_into_the_power_strip",
+ "evVideoDir": "videos/flora/plug_the_charger_into_the_power_strip",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/plug_the_charger_into_the_power_strip/lof-d32.js",
+   "latent": 32,
+   "n_tr": 4690,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    11.59,
+    10.38,
+    9.51
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

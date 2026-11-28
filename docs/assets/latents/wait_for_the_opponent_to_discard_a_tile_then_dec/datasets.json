@@ -1,0 +1,23 @@
+{
+ "key": "wait_for_the_opponent_to_discard_a_tile_then_dec",
+ "label": "Wait for the opponent to discard a tile, the…",
+ "videoDir": "videos/flora/wait_for_the_opponent_to_discard_a_tile_then_dec",
+ "evVideoDir": "videos/flora/wait_for_the_opponent_to_discard_a_tile_then_dec",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/wait_for_the_opponent_to_discard_a_tile_then_dec/lof-d32.js",
+   "latent": 32,
+   "n_tr": 7508,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    12.97,
+    10.61,
+    10.05
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

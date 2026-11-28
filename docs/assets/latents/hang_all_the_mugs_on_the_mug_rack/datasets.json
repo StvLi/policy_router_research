@@ -1,0 +1,23 @@
+{
+ "key": "hang_all_the_mugs_on_the_mug_rack",
+ "label": "Hang all the mugs on the mug rack.",
+ "videoDir": "videos/flora/hang_all_the_mugs_on_the_mug_rack",
+ "evVideoDir": "videos/flora/hang_all_the_mugs_on_the_mug_rack",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/hang_all_the_mugs_on_the_mug_rack/lof-d32.js",
+   "latent": 32,
+   "n_tr": 10609,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    11.79,
+    10.54,
+    9.56
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

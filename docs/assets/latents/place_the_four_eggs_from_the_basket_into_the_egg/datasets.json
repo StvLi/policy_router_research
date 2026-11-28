@@ -1,0 +1,23 @@
+{
+ "key": "place_the_four_eggs_from_the_basket_into_the_egg",
+ "label": "Place the four eggs from the basket into the…",
+ "videoDir": "videos/flora/place_the_four_eggs_from_the_basket_into_the_egg",
+ "evVideoDir": "videos/flora/place_the_four_eggs_from_the_basket_into_the_egg",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/place_the_four_eggs_from_the_basket_into_the_egg/lof-d32.js",
+   "latent": 32,
+   "n_tr": 8423,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    12.14,
+    9.59,
+    8.46
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

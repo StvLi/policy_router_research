@@ -1,0 +1,23 @@
+{
+ "key": "place_all_the_objects_into_the_box_with_their_fr",
+ "label": "Place all the objects into the box with thei…",
+ "videoDir": "videos/flora/place_all_the_objects_into_the_box_with_their_fr",
+ "evVideoDir": "videos/flora/place_all_the_objects_into_the_box_with_their_fr",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/place_all_the_objects_into_the_box_with_their_fr/lof-d32.js",
+   "latent": 32,
+   "n_tr": 16726,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    12.29,
+    9.75,
+    9.07
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "key": "fold_the_clothes_neatly",
+ "label": "Fold the clothes neatly.",
+ "videoDir": "videos/flora/fold_the_clothes_neatly",
+ "evVideoDir": "videos/flora/fold_the_clothes_neatly",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/fold_the_clothes_neatly/lof-d32.js",
+   "latent": 32,
+   "n_tr": 6111,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    13.02,
+    10.9,
+    9.37
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

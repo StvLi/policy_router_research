@@ -1,0 +1,23 @@
+{
+ "key": "play_tic_tac_toe_as_the_first_player_and_fill_th",
+ "label": "Play tic-tac-toe as the first player and fil…",
+ "videoDir": "videos/flora/play_tic_tac_toe_as_the_first_player_and_fill_th",
+ "evVideoDir": "videos/flora/play_tic_tac_toe_as_the_first_player_and_fill_th",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/play_tic_tac_toe_as_the_first_player_and_fill_th/lof-d32.js",
+   "latent": 32,
+   "n_tr": 17621,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    14.18,
+    11.62,
+    9.3
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

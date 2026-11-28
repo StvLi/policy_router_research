@@ -1,0 +1,23 @@
+{
+ "key": "pick_up_the_mallet_and_strike_all_xylophone_keys",
+ "label": "Pick up the mallet and strike all xylophone …",
+ "videoDir": "videos/flora/pick_up_the_mallet_and_strike_all_xylophone_keys",
+ "evVideoDir": "videos/flora/pick_up_the_mallet_and_strike_all_xylophone_keys",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/pick_up_the_mallet_and_strike_all_xylophone_keys/lof-d32.js",
+   "latent": 32,
+   "n_tr": 6233,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    13.05,
+    10.18,
+    8.91
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}

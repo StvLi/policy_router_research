@@ -1,0 +1,23 @@
+{
+ "key": "press_the_two_red_buttons_the_required_number_of",
+ "label": "Press the two red buttons the required numbe…",
+ "videoDir": "videos/flora/press_the_two_red_buttons_the_required_number_of",
+ "evVideoDir": "videos/flora/press_the_two_red_buttons_the_required_number_of",
+ "datasets": [
+  {
+   "key": "lof-d32",
+   "group": "按任务（该任务独立 VAE · 32 维）",
+   "file": "latents/press_the_two_red_buttons_the_required_number_of/lof-d32.js",
+   "latent": 32,
+   "n_tr": 7824,
+   "n_ev": 0,
+   "n_ep": 100,
+   "pc_var": [
+    14.1,
+    12.55,
+    10.81
+   ],
+   "note": "100 集演示 · 暂无 rollout"
+  }
+ ]
+}
